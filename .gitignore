@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ChromaDB 运行时索引
+.index/
+
+# 日志
+logs/
+*.log
+
+# 本地测试/临时文件
+_test_*.py
+_test_*.txt
+_result*.txt
+_*.py
+_*.txt
+
+# 系统文件
+.DS_Store
+Thumbs.db
