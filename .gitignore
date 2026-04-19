@@ -40,12 +40,16 @@ env/
 logs/
 *.log
 
+# 调用日志（按天归档）
+logs/calls/
+
 # 本地测试/临时文件
 _test_*.py
 _test_*.txt
 _result*.txt
 _*.py
 _*.txt
+test_match.py
 
 # 系统文件
 .DS_Store

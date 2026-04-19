@@ -9,10 +9,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # 加载配置（会设置 HF_ENDPOINT 等环境变量）
 import config  # noqa: F401
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
+import time
+
+from utils.call_logger import call_logger
 
 # ── 日志 ────────────────────────────────────────────────────────────
 LOG_DIR = Path(__file__).parent.parent / "logs"
@@ -64,6 +67,7 @@ def startup():
 class MatchRequest(BaseModel):
     query: str = Field(..., description="自然语言查询")
     agent_type: Optional[str] = Field(None, description="claude_code | codex")
+    session_id: Optional[str] = Field(None, description="调用方会话ID，用于追踪")
     top_k: int = Field(5, ge=1, le=20)
 
 
@@ -83,13 +87,16 @@ class SkillInfo(BaseModel):
 # ── API 接口 ───────────────────────────────────────────────────────
 
 @app.post("/api/skill/match", response_model=list[SkillInfo])
-def match_skill(req: MatchRequest):
+def match_skill(req: MatchRequest, http_req: Request = None):
     """语义检索最匹配技能（Agent 主调用入口）"""
+    start_time = time.time()
+    
     results = engine.match(
         query=req.query,
         agent_type=req.agent_type,
         top_k=req.top_k,
     )
+    
     skills = []
     for r in results:
         skills.append(SkillInfo(
@@ -104,6 +111,18 @@ def match_skill(req: MatchRequest):
             file_path=r.get("file_path", ""),
             score=r["score"],
         ))
+    
+    # 记录调用日志
+    latency_ms = (time.time() - start_time) * 1000
+    call_logger.log(
+        query=req.query,
+        hits=[s.model_dump() for s in skills],
+        source=req.agent_type,
+        session_id=req.session_id,
+        top_k=req.top_k,
+        latency_ms=latency_ms,
+    )
+    
     return skills
 
 
