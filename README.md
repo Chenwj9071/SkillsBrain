@@ -4,6 +4,93 @@
 
 ---
 
+## 快速安装
+
+```bash
+# 克隆仓库
+git clone https://github.com/Chenwj9071/SkillsBrain.git
+cd SkillsBrain
+
+# 安装
+pip install -e .
+```
+
+---
+
+## CLI 使用
+
+安装后自动提供全局命令 `skillsbrain`:
+
+### 启动服务
+
+```bash
+# 默认端口 8765
+skillsbrain serve
+
+# 指定端口和技能目录
+skillsbrain serve --port 9000 --skills ./my-skills
+```
+
+### 查询技能
+
+```bash
+# 基本查询
+skillsbrain match "提取PDF中的表格"
+
+# 指定返回数量和会话ID
+skillsbrain match "编辑Excel公式" --top-k 3 --session sess-001
+
+# 指定 Agent 类型
+skillsbrain match "生成Word报告" --agent claude_code
+```
+
+### 管理命令
+
+```bash
+# 列出所有技能
+skillsbrain list
+
+# 过滤特定 Agent 的技能
+skillsbrain list --agent codex
+
+# 查看统计
+skillsbrain stats
+
+# 重建索引
+skillsbrain reindex
+```
+
+---
+
+## API 接口
+
+服务启动后，访问 `http://127.0.0.1:8765/docs` 查看 Swagger 文档。
+
+### 核心接口
+
+```bash
+POST /api/skill/match
+{
+  "query": "提取PDF中的表格",
+  "agent_type": "claude_code",
+  "session_id": "session-001",
+  "top_k": 5
+}
+```
+
+### 管理接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/skill/list` | 列出所有技能 |
+| GET | `/api/skill/detail/{name}` | 查看单个技能 |
+| POST | `/api/skill/enable/{name}` | 上下线技能 |
+| POST | `/api/skill/reindex` | 重建索引 |
+| GET | `/api/skill/stats` | 统计信息 |
+| GET | `/health` | 健康检查 |
+
+---
+
 ## 技术架构
 
 | 层级 | 组件 | 作用 |
