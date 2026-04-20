@@ -13,6 +13,13 @@ from skillsbrain.core.indexer import SkillIndexer
 from skillsbrain.core.parser import SkillParser
 
 
+class DummyModel:
+    def encode(self, texts, normalize_embeddings=True):
+        if isinstance(texts, str):
+            texts = [texts]
+        return [[float(i + 1)] * 3 for i, _ in enumerate(texts)]
+
+
 def main():
     base = Path(tempfile.mkdtemp(prefix="skillsbrain_test_"))
     skills_dir = base / "skills"
@@ -63,6 +70,7 @@ def main():
     assert beta.tags == ["beta", "sheet"]
 
     indexer = SkillIndexer(skills_dir=skills_dir, index_dir=index_dir)
+    indexer._model = DummyModel()
     count = indexer.full_sync()
     assert count == 2
     stored = indexer._collection.get(include=["metadatas"])

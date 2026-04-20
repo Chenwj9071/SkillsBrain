@@ -33,31 +33,13 @@ class SkillEngine:
         return filtered
 
     # ── 第二层：宽语义召回 ───────────────────────────────────────────
-    def _semantic_recall(
-        self, query: str, top_k: int
-    ) -> list[dict]:
+    def _semantic_recall(self, query: str, top_k: int) -> list[dict]:
         """向量语义召回"""
-        emb = self._indexer.model.encode([query], normalize_embeddings=True)
-        recall_k = settings.top_k_recall
-
         try:
-            hits = self._indexer._collection.query(
-                query_embeddings=emb,
-                n_results=recall_k,
-                include=["metadatas", "distances"],
-            )
+            return self._indexer.query_skills(query=query, top_k=top_k)
         except Exception as e:
             logger.error(f"Chroma query failed: {e}")
             return []
-
-        results = []
-        for i, meta in enumerate(hits["metadatas"][0]):
-            dist = hits["distances"][0][i]
-            # cosine distance → similarity (1 - dist)
-            score = round(1 - dist, 4)
-            results.append({**meta, "score": score})
-
-        return results
 
     # ── 第三层：精排层 ──────────────────────────────────────────────
     def _rerank(self, results: list[dict]) -> list[dict]:
@@ -75,7 +57,7 @@ class SkillEngine:
     ) -> list[dict]:
         """三层检索主入口"""
         # 1. 宽召回
-        candidates = self._semantic_recall(query, top_k=settings.top_k_recall)
+        candidates = self._semantic_recall(query, top_k=min(max(top_k, 1), settings.top_k_recall))
         if not candidates:
             logger.warning(f"No recall for query: {query}")
             return []

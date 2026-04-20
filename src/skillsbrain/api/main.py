@@ -12,7 +12,7 @@ import time
 from skillsbrain.config import settings
 from skillsbrain.core.indexer import SkillIndexer
 from skillsbrain.core.engine import SkillEngine
-from skillsbrain.core.watcher import start_watcher
+from skillsbrain.core.watcher import start_watcher, stop_watcher
 from skillsbrain.utils.call_logger import call_logger
 
 
@@ -39,10 +39,12 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         description="Local skill routing engine for AI Agents",
     )
     
+    cors_origins = settings.cors_origin_list or ["http://127.0.0.1", "http://localhost"]
+    allow_credentials = "*" not in cors_origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -50,6 +52,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
     # 全局状态
     app.state.indexer = None
     app.state.engine = None
+    app.state.observer = None
 
     @app.on_event("startup")
     def startup():
@@ -64,8 +67,12 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         count = app.state.indexer.full_sync()
         logger.info(f"Indexed {count} skills")
 
-        start_watcher(app.state.indexer)
+        app.state.observer = start_watcher(app.state.indexer)
         logger.info("SkillsBrain ready")
+
+    @app.on_event("shutdown")
+    def shutdown():
+        stop_watcher(app.state.observer)
 
     # Request/Response 模型
     class MatchRequest(BaseModel):
@@ -130,53 +137,33 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
     def list_skills(agent_type: Optional[str] = None, enabled_only: bool = True):
         """列出所有技能"""
         try:
-            all_data = app.state.indexer._collection.get(include=["metadatas"])
+            skills = app.state.indexer.list_skills(agent_type=agent_type, enabled_only=enabled_only)
         except Exception as e:
             raise HTTPException(500, str(e))
-
-        skills = []
-        for meta in all_data["metadatas"]:
-            compat = meta.get("compatibility", "").split(",")
-            if agent_type and agent_type not in compat:
-                continue
-            if enabled_only and meta.get("enabled", "True").lower() != "true":
-                continue
-            skills.append(meta)
         return {"total": len(skills), "skills": skills}
 
     @app.get("/api/skill/detail/{name}")
     def get_skill(name: str):
         """查看单个技能详情"""
         try:
-            result = app.state.indexer._collection.get(ids=[name], include=["metadatas"])
+            result = app.state.indexer.get_skill(name)
         except Exception as e:
             raise HTTPException(500, str(e))
 
-        if not result["metadatas"]:
+        if not result:
             raise HTTPException(404, f"Skill '{name}' not found")
-        return result["metadatas"][0]
+        return result
 
     @app.post("/api/skill/enable/{name}")
     def toggle_skill(name: str, enabled: bool = True):
         """上下线技能"""
         try:
-            result = app.state.indexer._collection.get(ids=[name], include=["metadatas"])
+            updated = app.state.indexer.set_skill_enabled(name, enabled)
         except Exception as e:
             raise HTTPException(500, str(e))
 
-        if not result["metadatas"]:
+        if not updated:
             raise HTTPException(404, f"Skill '{name}' not found")
-
-        meta = result["metadatas"][0].copy()
-        meta["enabled"] = str(enabled).lower()
-
-        emb_result = app.state.indexer._collection.get(ids=[name], include=["embeddings"])
-        if emb_result["embeddings"]:
-            app.state.indexer._collection.upsert(
-                ids=[name],
-                embeddings=emb_result["embeddings"],
-                metadatas=[meta],
-            )
         return {"name": name, "enabled": enabled}
 
     @app.post("/api/skill/reindex")

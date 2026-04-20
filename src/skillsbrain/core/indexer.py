@@ -69,6 +69,14 @@ class SkillIndexer:
         self._collection.delete(ids=skill_ids)
         logger.info("Removed %d skills from index.", len(skill_ids))
 
+    @staticmethod
+    def _normalize_metadata(meta: dict) -> dict:
+        data = dict(meta)
+        data["compatibility"] = [item for item in (data.get("compatibility", "") or "").split(",") if item]
+        data["tags"] = [item for item in (data.get("tags", "") or "").split(",") if item]
+        data["enabled"] = str(data.get("enabled", "True")).lower() == "true"
+        return data
+
     def _upsert(self, skills: list[SkillMeta]):
         if not skills:
             return
@@ -126,6 +134,52 @@ class SkillIndexer:
             logger.info("Removed skill '%s' from index.", skill_id)
         except Exception:
             logger.exception("Failed to delete skill for path: %s", file_path)
+
+    def query_skills(self, query: str, top_k: int) -> list[dict]:
+        emb = self.model.encode([query], normalize_embeddings=True)
+        hits = self._collection.query(
+            query_embeddings=emb,
+            n_results=top_k,
+            include=["metadatas", "distances"],
+        )
+
+        results = []
+        for i, meta in enumerate(hits["metadatas"][0]):
+            dist = hits["distances"][0][i]
+            score = round(1 - dist, 4)
+            results.append({**meta, "score": score})
+        return results
+
+    def list_skills(self, agent_type: str | None = None, enabled_only: bool = True) -> list[dict]:
+        data = self._collection.get(include=["metadatas"])
+        skills = []
+        for meta in data.get("metadatas", []):
+            normalized = self._normalize_metadata(meta)
+            if agent_type and agent_type not in normalized["compatibility"]:
+                continue
+            if enabled_only and not normalized["enabled"]:
+                continue
+            skills.append(normalized)
+        return skills
+
+    def get_skill(self, skill_id: str) -> dict | None:
+        result = self._collection.get(ids=[skill_id], include=["metadatas"])
+        metadatas = result.get("metadatas", [])
+        if not metadatas:
+            return None
+        return self._normalize_metadata(metadatas[0])
+
+    def set_skill_enabled(self, skill_id: str, enabled: bool) -> bool:
+        result = self._collection.get(ids=[skill_id], include=["metadatas", "embeddings"])
+        metadatas = result.get("metadatas", [])
+        embeddings = result.get("embeddings", [])
+        if not metadatas or not embeddings:
+            return False
+
+        meta = dict(metadatas[0])
+        meta["enabled"] = str(enabled).lower()
+        self._collection.upsert(ids=[skill_id], embeddings=embeddings, metadatas=[meta])
+        return True
 
     def get_stats(self) -> dict:
         return {

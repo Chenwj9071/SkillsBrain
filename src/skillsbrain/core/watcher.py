@@ -65,3 +65,11 @@ def start_watcher(indexer):
     observer.start()
     logger.info(f"File watcher started on: {indexer.skills_dir}")
     return observer
+
+
+def stop_watcher(observer: Observer | None):
+    if observer is None:
+        return
+    observer.stop()
+    observer.join(timeout=5)
+    logger.info("File watcher stopped.")
