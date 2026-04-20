@@ -19,11 +19,10 @@ from skillsbrain.utils.call_logger import call_logger
 
 def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
     """创建 FastAPI 应用"""
-    
-    # 日志配置
+
     log_dir = Path(settings.log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -39,7 +38,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         version="1.0.0",
         description="Local skill routing engine for AI Agents",
     )
-    
+
     cors_origins = settings.cors_origin_list or ["http://127.0.0.1", "http://localhost"]
     allow_credentials = "*" not in cors_origins
     app.add_middleware(
@@ -50,7 +49,6 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    # 全局状态
     app.state.indexer = None
     app.state.engine = None
     app.state.observer = None
@@ -59,7 +57,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
     @app.on_event("startup")
     def startup():
         logger.info("SkillsBrain starting...")
-        
+
         app.state.indexer = SkillIndexer(
             skills_dir=skills_dir or Path(settings.skills_dir),
             index_dir=index_dir or Path(settings.index_dir),
@@ -73,11 +71,17 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         app.state.ready = True
         logger.info("SkillsBrain ready")
 
+        for sub in app.state.indexer.list_subscriptions():
+            if sub["name"] == "local":
+                continue
+            observer = start_watcher(app.state.indexer, root=Path(sub["root"]), source_name=sub["name"])
+            app.state.indexer.register_watcher(sub["name"], observer, stop_callback=stop_watcher)
+
     @app.on_event("shutdown")
     def shutdown():
+        app.state.indexer.stop_all_watchers()
         stop_watcher(app.state.observer)
 
-    # Request/Response 模型
     class MatchRequest(BaseModel):
         query: str = Field(..., description="自然语言查询")
         agent_type: Optional[str] = Field(None, description="claude_code | codex")
@@ -96,20 +100,29 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         created_at: str
         file_path: str
         relative_path: str
+        source_type: str
+        source_name: str
+        source_root: str
+        source_rel_path: str
         score: float
 
-    # API 接口
+    class SubscribeRequest(BaseModel):
+        path: str
+        name: Optional[str] = None
+
+    class UnsubscribeRequest(BaseModel):
+        name_or_root: str
+
     @app.post("/api/skill/match", response_model=list[SkillInfo])
     def match_skill(req: MatchRequest):
-        """语义检索最匹配技能"""
         start_time = time.time()
-        
+
         results = app.state.engine.match(
             query=req.query,
             agent_type=req.agent_type,
             top_k=req.top_k,
         )
-        
+
         skills = []
         for r in results:
             skills.append(SkillInfo(
@@ -124,10 +137,13 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
                 created_at=r.get("created_at", ""),
                 file_path=r.get("file_path", ""),
                 relative_path=r.get("relative_path", ""),
+                source_type=r.get("source_type", "local"),
+                source_name=r.get("source_name", "local"),
+                source_root=r.get("source_root", ""),
+                source_rel_path=r.get("source_rel_path", ""),
                 score=r["score"],
             ))
-        
-        # 记录调用日志
+
         latency_ms = (time.time() - start_time) * 1000
         call_logger.log(
             query=req.query,
@@ -137,7 +153,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
             top_k=req.top_k,
             latency_ms=latency_ms,
         )
-        
+
         return skills
 
     @app.get("/api/skill/list")
@@ -147,7 +163,6 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         offset: int = 0,
         limit: int = 50,
     ):
-        """列出所有技能"""
         if offset < 0:
             raise HTTPException(400, "offset must be >= 0")
         if limit < 1 or limit > 200:
@@ -166,7 +181,6 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
 
     @app.get("/api/skill/detail/{name}")
     def get_skill(name: str):
-        """查看单个技能详情"""
         try:
             result = app.state.indexer.get_skill(name)
         except Exception as e:
@@ -178,14 +192,30 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
 
     @app.post("/api/skill/reindex")
     def reindex():
-        """重建索引"""
         count = app.state.indexer.full_sync()
         return {"indexed": count, "message": "Reindex complete"}
 
     @app.get("/api/skill/stats")
     def stats():
-        """索引统计"""
         return app.state.indexer.get_stats()
+
+    @app.get("/api/source/list")
+    def source_list():
+        return {"sources": app.state.indexer.list_subscriptions()}
+
+    @app.post("/api/source/subscribe")
+    def source_subscribe(req: SubscribeRequest):
+        try:
+            return app.state.indexer.subscribe_source(Path(req.path), name=req.name)
+        except Exception as e:
+            raise HTTPException(400, str(e))
+
+    @app.post("/api/source/unsubscribe")
+    def source_unsubscribe(req: UnsubscribeRequest):
+        try:
+            return app.state.indexer.unsubscribe_source(req.name_or_root)
+        except Exception as e:
+            raise HTTPException(400, str(e))
 
     @app.get("/health")
     def health():

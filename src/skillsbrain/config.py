@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     # 文件监听
     debounce_seconds: float = 1.0
 
+    # 订阅源配置
+    subscriptions_file: str = str(Path.cwd() / ".index" / "subscriptions.json")
+
     class Config:
         env_prefix = "SKILLSBRAIN_"
 

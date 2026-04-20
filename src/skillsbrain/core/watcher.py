@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 class SkillChangeHandler(FileSystemEventHandler):
     """监听 SKILL.md 变化，防抖 1s 后更新索引"""
 
-    def __init__(self, indexer, debounce: float = 1.0):
+    def __init__(self, indexer, root: Path, source_name: str, debounce: float = 1.0):
         self.indexer = indexer
+        self.root = Path(root).resolve()
+        self.source_name = source_name
         self.debounce = debounce
         self._pending: dict[str, float] = {}
         self._lock = threading.Lock()
@@ -41,29 +43,30 @@ class SkillChangeHandler(FileSystemEventHandler):
     def on_created(self, event: FileSystemEvent):
         if event.is_directory or not event.src_path.endswith("SKILL.md"):
             return
-        logger.info(f"Skill created: {event.src_path}")
+        logger.info("Skill created: %s", event.src_path)
         self._debounced(event.src_path, "created")
 
     def on_modified(self, event: FileSystemEvent):
         if event.is_directory or not event.src_path.endswith("SKILL.md"):
             return
-        logger.info(f"Skill modified: {event.src_path}")
+        logger.info("Skill modified: %s", event.src_path)
         self._debounced(event.src_path, "modified")
 
     def on_deleted(self, event: FileSystemEvent):
         if event.is_directory or not event.src_path.endswith("SKILL.md"):
             return
-        logger.info(f"Skill deleted: {event.src_path}")
+        logger.info("Skill deleted: %s", event.src_path)
         self._debounced(event.src_path, "deleted")
 
 
-def start_watcher(indexer):
-    handler = SkillChangeHandler(indexer, debounce=settings.debounce_seconds)
+def start_watcher(indexer, root: Path | None = None, source_name: str = "local"):
+    watch_root = Path(root or indexer.skills_dir).resolve()
+    handler = SkillChangeHandler(indexer, root=watch_root, source_name=source_name, debounce=settings.debounce_seconds)
     observer = Observer()
-    observer.schedule(handler, str(indexer.skills_dir), recursive=True)
+    observer.schedule(handler, str(watch_root), recursive=True)
     observer.daemon = True
     observer.start()
-    logger.info(f"File watcher started on: {indexer.skills_dir}")
+    logger.info("File watcher started on: %s (%s)", watch_root, source_name)
     return observer
 
 
@@ -73,3 +76,7 @@ def stop_watcher(observer: Observer | None):
     observer.stop()
     observer.join(timeout=5)
     logger.info("File watcher stopped.")
+
+
+def stop_observer(observer: Observer | None):
+    stop_watcher(observer)

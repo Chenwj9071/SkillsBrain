@@ -74,12 +74,12 @@ def main():
     count = indexer.full_sync()
     assert count == 2
     stored = indexer._collection.get(include=["metadatas"])
-    assert set(stored["ids"]) == {"alpha", "beta"}
+    assert set(stored["ids"]) == {"local:alpha", "local:beta"}
 
     (skills_dir / "beta" / "SKILL.md").unlink()
     indexer.delete_skill(skills_dir / "beta" / "SKILL.md")
     stored_after_delete = indexer._collection.get(include=["metadatas"])
-    assert set(stored_after_delete["ids"]) == {"alpha"}
+    assert set(stored_after_delete["ids"]) == {"local:alpha"}
 
     (skills_dir / "gamma").mkdir(parents=True)
     (skills_dir / "gamma" / "SKILL.md").write_text(
@@ -100,7 +100,7 @@ def main():
     count2 = indexer.full_sync()
     assert count2 == 2
     stored_after_sync = indexer._collection.get(include=["metadatas"])
-    assert set(stored_after_sync["ids"]) == {"alpha", "gamma"}
+    assert set(stored_after_sync["ids"]) == {"local:alpha", "local:gamma"}
 
     engine = SkillEngine(indexer)
     engine._semantic_recall = lambda query, top_k: [

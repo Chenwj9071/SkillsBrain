@@ -35,15 +35,15 @@ pip install -e .
 pip uninstall skillsbrain -y
 
 # 删除数据（可选）
-rm -rf .index/        # 向量索引
-rm -rf logs/          # 日志目录
+rm -rf .index/
+rm -rf logs/
 ```
 
 ---
 
 ## CLI 使用
 
-安装后自动提供全局命令 `skillsbrain`:
+安装后自动提供全局命令 `skillsbrain`：
 
 ### 启动服务
 
@@ -68,7 +68,7 @@ skillsbrain match "编辑Excel公式" --top-k 3 --session sess-001
 skillsbrain match "生成Word报告" --agent claude_code
 ```
 
-### 管理命令
+### 管理技能
 
 ```bash
 # 列出所有技能
@@ -82,6 +82,19 @@ skillsbrain stats
 
 # 重建索引
 skillsbrain reindex
+```
+
+### 订阅外部 skills 源
+
+```bash
+# 订阅一个目录并自动纳入索引
+skillsbrain subscribe D:/shared-skills --name shared
+
+# 查看所有订阅源
+skillsbrain sources
+
+# 取消订阅
+skillsbrain unsubscribe shared
 ```
 
 ---
@@ -102,16 +115,24 @@ POST /api/skill/match
 }
 ```
 
-### 管理接口
+### 技能列表
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/skill/list` | 列出所有技能 |
-| GET | `/api/skill/detail/{name}` | 查看单个技能 |
-| POST | `/api/skill/enable/{name}` | 上下线技能 |
+| GET | `/api/skill/list` | 列出技能，支持 `agent_type`、`offset`、`limit` |
+| GET | `/api/skill/detail/{name}` | 查看单个技能详情 |
 | POST | `/api/skill/reindex` | 重建索引 |
 | GET | `/api/skill/stats` | 统计信息 |
 | GET | `/health` | 健康检查 |
+| GET | `/health/ready` | 就绪检查 |
+
+### 订阅源管理接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/source/list` | 查看已订阅源 |
+| POST | `/api/source/subscribe` | 订阅一个新目录 |
+| POST | `/api/source/unsubscribe` | 取消订阅目录 |
 
 ---
 
@@ -121,38 +142,42 @@ POST /api/skill/match
 |------|------|------|
 | 技能接入层 | `core/parser.py` | 解析 SKILL.md 元数据 |
 | 索引层 | `core/indexer.py` + ChromaDB | 向量存储 + 元数据持久化 |
-| 检索引擎 | `core/engine.py` | 三层检索（过滤→召回→精排）|
-| API 层 | `api/main.py` + FastAPI | REST 接口 / 管理后台入口 |
+| 检索引擎 | `core/engine.py` | 三层检索（过滤→召回→阈值筛选） |
+| API 层 | `api/main.py` + FastAPI | REST 接口 / 管理入口 |
 | 文件监听 | `core/watcher.py` + watchdog | 增量同步，防抖 1s |
 
 ## 三层检索流程
 
-1. **快速过滤层** — 按 `compatibility`、`enabled` 过滤候选集
-2. **宽语义召回层** — bge-small-zh-v1.5 向量召回 Top12（余弦相似度）
-3. **精排层** — 阈值 ≥ 0.65 过滤，输出 Top5
+1. **快速过滤层** — 按 `enabled`、`compatibility` 过滤候选集
+2. **宽语义召回层** — bge-small-zh-v1.5 向量召回 Top12
+3. **精筛层** — 阈值 ≥ 0.65 过滤，输出 Top5
+
+---
 
 ## 目录结构
 
 ```
 SkillsBrain/
-├── pyproject.toml          # pip 安装配置
-├── src/skillsbrain/       # 源码包
-│   ├── cli.py             # CLI 入口（Typer）
-│   ├── config.py          # 配置
-│   ├── core/              # 核心模块
-│   ├── api/               # FastAPI 服务
-│   └── utils/             # 工具
-├── skills/                # 技能存放目录（扩展子目录）
-├── .index/                # Chroma 向量索引（自动生成）
-├── logs/                  # 日志目录
-└── skill/                 # Agent 使用指南 Skill 包
+├── pyproject.toml
+├── src/skillsbrain/
+│   ├── cli.py
+│   ├── config.py
+│   ├── core/
+│   ├── api/
+│   └── utils/
+├── skills/
+├── .index/
+├── logs/
+└── docs/
 ```
 
-## 扩展技能目录
+---
 
-只需在 `skills/` 下新建子目录，放入符合规范的 `SKILL.md`，监听器会自动检测并更新索引，无需重启服务。
+## 技能格式
 
-## 技能 SKILL.md 格式
+`skills/<skill-name>/SKILL.md`
+
+示例：
 
 ```yaml
 ---
@@ -166,7 +191,33 @@ enabled: true
 created_at: 2026-04-19
 ---
 
-# 技能标题
-
-技能正文描述（不会被索引，仅供参考）
+# 技能正文
 ```
+
+---
+
+## 订阅源设计
+
+SkillsBrain 支持订阅外部 skills 目录。
+
+### 特点
+- 不修改订阅目录中的源文件
+- 订阅后自动扫描并纳入索引
+- 订阅后自动启动 watcher
+- 可随时取消订阅
+
+### 推荐命令
+```bash
+skillsbrain subscribe D:/shared-skills --name shared
+skillsbrain sources
+skillsbrain unsubscribe shared
+```
+
+---
+
+## 说明
+
+当前服务定位为本地可信环境使用：
+- 默认监听 `127.0.0.1`
+- skills 文件由本机 Agent / CLI 消费
+- 索引与订阅状态保存在本地 `.index/`
