@@ -17,6 +17,26 @@ cd SkillsBrain
 pip install -e .
 ```
 
+### 安装后让 `skillsbrain` 命令可直接使用
+
+安装完成后，CLI 可执行文件会放在 Python 的 `Scripts` 目录中。若终端找不到 `skillsbrain` 命令，请把该目录加入 PATH。
+
+#### Windows（PowerShell，当前用户）
+```powershell
+$scriptDir = "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts"
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$scriptDir", "User")
+```
+
+重新打开终端后生效。
+
+#### Linux / macOS（当前用户）
+```bash
+echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+如果你是用虚拟环境或其他安装方式，路径可能不同，请以 `pip install -e .` 后实际生成的脚本目录为准。
+
 ### 安装（离线环境）
 
 ```bash
