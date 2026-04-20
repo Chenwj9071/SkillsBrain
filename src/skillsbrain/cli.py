@@ -1,11 +1,10 @@
 """SkillsBrain CLI"""
 import os
-import sys
 from pathlib import Path
 from typing import Optional
 
-import typer
 import requests
+import typer
 
 app = typer.Typer(
     name="skillsbrain",
@@ -21,6 +20,33 @@ DEFAULT_SKILLS_DIR = Path.cwd() / "skills"
 
 def get_server_url(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> str:
     return f"http://{host}:{port}"
+
+
+def request_json(method: str, url: str, **kwargs):
+    try:
+        response = requests.request(method, url, **kwargs)
+        response.raise_for_status()
+    except requests.exceptions.ConnectionError:
+        typer.secho("Error: Cannot connect to SkillsBrain server.", fg="red")
+        raise typer.Exit(1)
+    except requests.exceptions.Timeout:
+        typer.secho("Error: Request to SkillsBrain timed out.", fg="red")
+        raise typer.Exit(1)
+    except requests.exceptions.HTTPError as exc:
+        detail = exc.response.text.strip() if exc.response is not None else str(exc)
+        typer.secho(f"Error: SkillsBrain returned HTTP {exc.response.status_code if exc.response else 'error'}.", fg="red")
+        if detail:
+            typer.echo(detail)
+        raise typer.Exit(1)
+    except requests.exceptions.RequestException as exc:
+        typer.secho(f"Error: Request failed: {exc}", fg="red")
+        raise typer.Exit(1)
+
+    try:
+        return response.json()
+    except ValueError:
+        typer.secho("Error: SkillsBrain returned invalid JSON.", fg="red")
+        raise typer.Exit(1)
 
 
 @app.command()
@@ -56,33 +82,26 @@ def match(
     """查询匹配的技能"""
     url = f"{get_server_url(host, port)}/api/skill/match"
     
-    try:
-        r = requests.post(
-            url,
-            json={
-                "query": query,
-                "agent_type": agent_type,
-                "session_id": session_id,
-                "top_k": top_k,
-            },
-            timeout=10,
-        )
-        r.raise_for_status()
-        
-        skills = r.json()
-        if not skills:
-            typer.echo("No matching skills found.")
-            return
-        
-        for skill in skills:
-            typer.echo(f"\n{skill['name']} (score: {skill['score']:.4f})")
-            typer.echo(f"  {skill['description']}")
-            typer.echo(f"  Tags: {', '.join(skill['tags'])}")
-            
-    except requests.exceptions.ConnectionError:
-        typer.secho("Error: Cannot connect to SkillsBrain server.", fg="red")
-        typer.echo(f"Make sure the server is running: skillsbrain serve --port {port}")
-        raise typer.Exit(1)
+    skills = request_json(
+        "POST",
+        url,
+        json={
+            "query": query,
+            "agent_type": agent_type,
+            "session_id": session_id,
+            "top_k": top_k,
+        },
+        timeout=10,
+    )
+    if not skills:
+        typer.echo("No matching skills found.")
+        return
+
+    for skill in skills:
+        typer.echo(f"\n{skill['name']} (score: {skill['score']:.4f})")
+        typer.echo(f"  ID: {skill.get('skill_id', '')}")
+        typer.echo(f"  {skill['description']}")
+        typer.echo(f"  Tags: {', '.join(skill['tags'])}")
 
 
 @app.command()
@@ -94,20 +113,17 @@ def list(
     """列出所有技能"""
     url = f"{get_server_url(host, port)}/api/skill/list"
     
-    try:
-        r = requests.get(url, params={"agent_type": agent_type}, timeout=10)
-        r.raise_for_status()
-        
-        data = r.json()
-        typer.echo(f"Total: {data['total']} skills\n")
-        
-        for skill in data["skills"]:
-            status = "✓" if skill.get("enabled", "true").lower() == "true" else "✗"
-            typer.echo(f"  [{status}] {skill['name']}")
-            
-    except requests.exceptions.ConnectionError:
-        typer.secho("Error: Cannot connect to SkillsBrain server.", fg="red")
-        raise typer.Exit(1)
+    data = request_json(
+        "GET",
+        url,
+        params={"agent_type": agent_type, "offset": 0, "limit": 200},
+        timeout=10,
+    )
+    typer.echo(f"Total: {data['total']} skills (showing {len(data['skills'])})\n")
+
+    for skill in data["skills"]:
+        status = "✓" if skill.get("enabled", True) else "✗"
+        typer.echo(f"  [{status}] {skill['name']} ({skill.get('skill_id', '')})")
 
 
 @app.command()
@@ -118,17 +134,9 @@ def stats(
     """查看索引统计"""
     url = f"{get_server_url(host, port)}/api/skill/stats"
     
-    try:
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        
-        data = r.json()
-        typer.echo(f"Total skills: {data['total']}")
-        typer.echo(f"Model: {data['model']}")
-        
-    except requests.exceptions.ConnectionError:
-        typer.secho("Error: Cannot connect to SkillsBrain server.", fg="red")
-        raise typer.Exit(1)
+    data = request_json("GET", url, timeout=10)
+    typer.echo(f"Total skills: {data['total']}")
+    typer.echo(f"Model: {data['model']}")
 
 
 @app.command()
@@ -139,16 +147,8 @@ def reindex(
     """重建索引"""
     url = f"{get_server_url(host, port)}/api/skill/reindex"
     
-    try:
-        r = requests.post(url, timeout=30)
-        r.raise_for_status()
-        
-        data = r.json()
-        typer.echo(f"Reindexed {data['indexed']} skills.")
-        
-    except requests.exceptions.ConnectionError:
-        typer.secho("Error: Cannot connect to SkillsBrain server.", fg="red")
-        raise typer.Exit(1)
+    data = request_json("POST", url, timeout=30)
+    typer.echo(f"Reindexed {data['indexed']} skills.")
 
 
 if __name__ == "__main__":

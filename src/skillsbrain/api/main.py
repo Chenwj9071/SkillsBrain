@@ -4,10 +4,11 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+import time
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-import time
 
 from skillsbrain.config import settings
 from skillsbrain.core.indexer import SkillIndexer
@@ -53,6 +54,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
     app.state.indexer = None
     app.state.engine = None
     app.state.observer = None
+    app.state.ready = False
 
     @app.on_event("startup")
     def startup():
@@ -68,6 +70,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         logger.info(f"Indexed {count} skills")
 
         app.state.observer = start_watcher(app.state.indexer)
+        app.state.ready = True
         logger.info("SkillsBrain ready")
 
     @app.on_event("shutdown")
@@ -82,6 +85,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         top_k: int = Field(5, ge=1, le=20)
 
     class SkillInfo(BaseModel):
+        skill_id: str
         name: str
         description: str
         compatibility: list[str]
@@ -91,6 +95,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         enabled: bool
         created_at: str
         file_path: str
+        relative_path: str
         score: float
 
     # API 接口
@@ -108,6 +113,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         skills = []
         for r in results:
             skills.append(SkillInfo(
+                skill_id=r["skill_id"],
                 name=r["name"],
                 description=r["description"],
                 compatibility=[item for item in r.get("compatibility", "").split(",") if item],
@@ -117,6 +123,7 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
                 enabled=r.get("enabled", "True").lower() == "true",
                 created_at=r.get("created_at", ""),
                 file_path=r.get("file_path", ""),
+                relative_path=r.get("relative_path", ""),
                 score=r["score"],
             ))
         
@@ -134,13 +141,28 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         return skills
 
     @app.get("/api/skill/list")
-    def list_skills(agent_type: Optional[str] = None, enabled_only: bool = True):
+    def list_skills(
+        agent_type: Optional[str] = None,
+        enabled_only: bool = True,
+        offset: int = 0,
+        limit: int = 50,
+    ):
         """列出所有技能"""
+        if offset < 0:
+            raise HTTPException(400, "offset must be >= 0")
+        if limit < 1 or limit > 200:
+            raise HTTPException(400, "limit must be between 1 and 200")
+
         try:
-            skills = app.state.indexer.list_skills(agent_type=agent_type, enabled_only=enabled_only)
+            skills, total = app.state.indexer.list_skills(
+                agent_type=agent_type,
+                enabled_only=enabled_only,
+                offset=offset,
+                limit=limit,
+            )
         except Exception as e:
             raise HTTPException(500, str(e))
-        return {"total": len(skills), "skills": skills}
+        return {"total": total, "offset": offset, "limit": limit, "skills": skills}
 
     @app.get("/api/skill/detail/{name}")
     def get_skill(name: str):
@@ -153,18 +175,6 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
         if not result:
             raise HTTPException(404, f"Skill '{name}' not found")
         return result
-
-    @app.post("/api/skill/enable/{name}")
-    def toggle_skill(name: str, enabled: bool = True):
-        """上下线技能"""
-        try:
-            updated = app.state.indexer.set_skill_enabled(name, enabled)
-        except Exception as e:
-            raise HTTPException(500, str(e))
-
-        if not updated:
-            raise HTTPException(404, f"Skill '{name}' not found")
-        return {"name": name, "enabled": enabled}
 
     @app.post("/api/skill/reindex")
     def reindex():
@@ -180,5 +190,11 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/health/ready")
+    def ready():
+        if not app.state.ready or app.state.indexer is None or app.state.engine is None:
+            raise HTTPException(503, "service not ready")
+        return {"status": "ready"}
 
     return app

@@ -30,8 +30,8 @@ class SkillIndexer:
     @property
     def model(self):
         if self._model is None:
-            logger.info(f"Loading embedding model: {settings.embedding_model}")
-            self._model = SentenceTransformer(settings.embedding_model)
+            logger.info(f"Loading embedding model: {settings.embedding_model} on device: {settings.device}")
+            self._model = SentenceTransformer(settings.embedding_model, device=settings.device)
             logger.info("Embedding model loaded.")
         return self._model
 
@@ -150,7 +150,13 @@ class SkillIndexer:
             results.append({**meta, "score": score})
         return results
 
-    def list_skills(self, agent_type: str | None = None, enabled_only: bool = True) -> list[dict]:
+    def list_skills(
+        self,
+        agent_type: str | None = None,
+        enabled_only: bool = True,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> tuple[list[dict], int]:
         data = self._collection.get(include=["metadatas"])
         skills = []
         for meta in data.get("metadatas", []):
@@ -160,7 +166,12 @@ class SkillIndexer:
             if enabled_only and not normalized["enabled"]:
                 continue
             skills.append(normalized)
-        return skills
+
+        skills.sort(key=lambda item: item.get("skill_id", item.get("name", "")))
+        total = len(skills)
+        if limit is None:
+            return skills[offset:], total
+        return skills[offset: offset + limit], total
 
     def get_skill(self, skill_id: str) -> dict | None:
         result = self._collection.get(ids=[skill_id], include=["metadatas"])
@@ -168,18 +179,6 @@ class SkillIndexer:
         if not metadatas:
             return None
         return self._normalize_metadata(metadatas[0])
-
-    def set_skill_enabled(self, skill_id: str, enabled: bool) -> bool:
-        result = self._collection.get(ids=[skill_id], include=["metadatas", "embeddings"])
-        metadatas = result.get("metadatas", [])
-        embeddings = result.get("embeddings", [])
-        if not metadatas or not embeddings:
-            return False
-
-        meta = dict(metadatas[0])
-        meta["enabled"] = str(enabled).lower()
-        self._collection.upsert(ids=[skill_id], embeddings=embeddings, metadatas=[meta])
-        return True
 
     def get_stats(self) -> dict:
         return {
