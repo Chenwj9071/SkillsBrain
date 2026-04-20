@@ -53,6 +53,9 @@ skillsbrain serve
 
 # 指定端口和技能目录
 skillsbrain serve --port 9000 --skills ./my-skills
+
+# 指定数据根目录（多项目管理）
+skillsbrain serve --data-dir D:/data/project-a
 ```
 
 ### 查询技能
@@ -219,5 +222,6 @@ skillsbrain unsubscribe shared
 
 当前服务定位为本地可信环境使用：
 - 默认监听 `127.0.0.1`
+- 默认数据根目录：用户目录下的 `~/.skillsbrain/`
 - skills 文件由本机 Agent / CLI 消费
-- 索引与订阅状态保存在本地 `.index/`
+- 索引与订阅状态保存在本地 `~/.skillsbrain/`

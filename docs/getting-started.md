@@ -52,12 +52,19 @@ skillsbrain serve
 
 默认会启动在：
 - `127.0.0.1:8765`
+- 默认数据目录：用户目录下的 `~/.skillsbrain/`
 
-如果需要指定目录：
+如果需要指定技能目录：
 
 ```bash
 skillsbrain serve --skills ./skills
+skillsbrain serve --data-dir D:/data/project-a
 ```
+
+说明：
+- `--skills` 只影响技能扫描目录
+- `--data-dir` 可指定整套数据根目录，适合多项目管理
+- 索引和日志默认保存在用户目录下的 `~/.skillsbrain/`
 
 ---
 

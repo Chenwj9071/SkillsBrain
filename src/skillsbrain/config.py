@@ -1,6 +1,7 @@
 """SkillsBrain configuration"""
 import os
 from pathlib import Path
+from platform import system
 
 from pydantic_settings import BaseSettings
 
@@ -9,15 +10,23 @@ os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 
+def _default_base_dir() -> Path:
+    if system().lower() == "windows":
+        home = Path(os.environ.get("USERPROFILE", str(Path.home())))
+    else:
+        home = Path.home()
+    return home / ".skillsbrain"
+
+
 class Settings(BaseSettings):
     # 技能目录（可由环境变量覆盖）
-    skills_dir: str = str(Path.cwd() / "skills")
+    skills_dir: str = str(_default_base_dir() / "skills")
 
     # 索引目录
-    index_dir: str = str(Path.cwd() / ".index")
+    index_dir: str = str(_default_base_dir() / ".index")
 
     # 日志目录
-    log_dir: str = str(Path.cwd() / "logs")
+    log_dir: str = str(_default_base_dir() / "logs")
 
     # 模型
     embedding_model: str = "BAAI/bge-small-zh-v1.5"

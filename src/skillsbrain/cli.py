@@ -14,7 +14,10 @@ app = typer.Typer(
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
-DEFAULT_SKILLS_DIR = Path.cwd() / "skills"
+DEFAULT_DATA_DIR = Path.home() / ".skillsbrain"
+DEFAULT_SKILLS_DIR = DEFAULT_DATA_DIR / "skills"
+DEFAULT_INDEX_DIR = DEFAULT_DATA_DIR / ".index"
+DEFAULT_LOG_DIR = DEFAULT_DATA_DIR / "logs"
 
 
 def get_server_url(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> str:
@@ -53,12 +56,18 @@ def serve(
     host: str = typer.Option(DEFAULT_HOST, "--host", "-h", help="服务地址"),
     port: int = typer.Option(DEFAULT_PORT, "--port", "-p", help="服务端口"),
     skills_dir: Path = typer.Option(None, "--skills", "-s", help="技能目录"),
+    data_dir: Path = typer.Option(None, "--data-dir", "-d", help="数据根目录，默认 ~/.skillsbrain"),
 ):
     """启动 SkillsBrain 服务"""
     import uvicorn
 
+    base_dir = data_dir.resolve() if data_dir else DEFAULT_DATA_DIR
+    os.environ["SKILLSBRAIN_INDEX_DIR"] = str((base_dir / ".index").resolve())
+    os.environ["SKILLSBRAIN_LOG_DIR"] = str((base_dir / "logs").resolve())
     if skills_dir:
         os.environ["SKILLSBRAIN_SKILLS_DIR"] = str(skills_dir.resolve())
+    else:
+        os.environ["SKILLSBRAIN_SKILLS_DIR"] = str((base_dir / "skills").resolve())
 
     from skillsbrain.api.main import create_app
 

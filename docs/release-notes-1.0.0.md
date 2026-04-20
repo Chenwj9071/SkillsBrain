@@ -141,8 +141,10 @@ skillsbrain
 
 - 这是一个**本地运行**的技能路由工具，不面向公网开放
 - 默认监听 `127.0.0.1`
+- 默认数据根目录：用户目录下的 `~/.skillsbrain/`
+- 支持通过 `skillsbrain serve --data-dir` 指定整套数据根目录
 - 技能源内容由本机 Agent / CLI 消费
-- 订阅源和索引状态存储在本地 `.index/`
+- 订阅源和索引状态存储在本地 `~/.skillsbrain/`
 
 ---
 
