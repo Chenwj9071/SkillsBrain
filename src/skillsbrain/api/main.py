@@ -103,8 +103,8 @@ def create_app(skills_dir: Path = None, index_dir: Path = None) -> FastAPI:
             skills.append(SkillInfo(
                 name=r["name"],
                 description=r["description"],
-                compatibility=r.get("compatibility", "").split(","),
-                tags=r.get("tags", "").split(","),
+                compatibility=[item for item in r.get("compatibility", "").split(",") if item],
+                tags=[item for item in r.get("tags", "").split(",") if item],
                 version=r.get("version", "1.0.0"),
                 author=r.get("author", ""),
                 enabled=r.get("enabled", "True").lower() == "true",

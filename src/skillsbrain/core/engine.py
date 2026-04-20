@@ -83,8 +83,8 @@ class SkillEngine:
         # 2. 元数据过滤
         filtered = self._filter_by_metadata(candidates, agent_type=agent_type)
         if not filtered:
-            logger.info("Metadata filter emptied results, returning top unfiltered candidates.")
-            filtered = candidates[:settings.top_k_recall]
+            logger.info("Metadata filter emptied results for query: %s", query)
+            return []
 
         # 3. 精排
         ranked = self._rerank(filtered)
