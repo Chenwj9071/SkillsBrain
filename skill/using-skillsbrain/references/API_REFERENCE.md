@@ -1,11 +1,16 @@
 # API 参考
 
-只有在明确需要 HTTP 集成时才使用本文件。默认仍应优先 `skillsbrain` CLI。
+仅在你需要做 HTTP 集成或调试时使用本文件。默认建议优先使用 `skillsbrain` CLI。
 
 ## 服务信息
 
 - 默认地址：`http://127.0.0.1:8765`
 - Swagger：`http://127.0.0.1:8765/docs`
+
+## 健康检查
+
+- `GET /health`
+- `GET /health/ready`
 
 ## 技能检索
 
@@ -20,21 +25,6 @@
 }
 ```
 
-返回字段包含：
-
-- `skill_id`
-- `name`
-- `description`
-- `compatibility`
-- `tags`
-- `file_path`
-- `relative_path`
-- `source_name`
-- `source_root`
-- `score`
-
-## 技能列表
-
 ### `GET /api/skill/list`
 
 查询参数：
@@ -44,31 +34,19 @@
 - `offset`
 - `limit`
 
-示例：
+### `GET /api/skill/stats`
 
-```bash
-curl "http://127.0.0.1:8765/api/skill/list?agent_type=codex&offset=0&limit=50"
-```
-
-### `GET /api/skill/detail/{name}`
-
-按技能名读取单个技能详情。
-
-## 索引与统计
+返回索引总量与 embedding 模型信息。
 
 ### `POST /api/skill/reindex`
 
-手动触发全量重建索引。
+触发全量重建索引。
 
-### `GET /api/skill/stats`
-
-读取索引总量与当前 embedding 模型。
-
-## 订阅源
+## 订阅源管理
 
 ### `GET /api/source/list`
 
-列出所有订阅源。
+列出订阅源。
 
 ### `POST /api/source/subscribe`
 
@@ -87,7 +65,18 @@ curl "http://127.0.0.1:8765/api/skill/list?agent_type=codex&offset=0&limit=50"
 }
 ```
 
-## 健康检查
+## 管理接口（生命周期）
 
-- `GET /health`
-- `GET /health/ready`
+### `GET /api/admin/status`
+
+返回服务运行态与运行时元数据（不包含 shutdown token）。
+
+### `POST /api/admin/shutdown`
+
+用于触发服务优雅退出。入参需要 shutdown token（由 CLI 写入运行时元数据文件并用于 `skillsbrain stop`，不建议在外部系统硬编码使用）。
+
+```json
+{
+  "token": "<shutdown-token>"
+}
+```

@@ -28,6 +28,10 @@ $scriptDir = "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts"
 ```
 
 重新打开终端后生效。
+如果只想让当前终端立即可用，可执行：
+```powershell
+$env:PATH = "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts;$env:PATH"
+```
 
 #### Linux / macOS（当前用户）
 ```bash
@@ -36,6 +40,25 @@ source ~/.bashrc
 ```
 
 如果你是用虚拟环境或其他安装方式，路径可能不同，请以 `pip install -e .` 后实际生成的脚本目录为准。
+如果暂时不想修改 PATH，也可以直接使用模块入口：
+```bash
+python -m skillsbrain.cli --help
+```
+
+### 升级 / 重装 CLI
+
+Windows 下如果已有 `skillsbrain serve` 常驻进程正在运行，重装时可能会遇到 `skillsbrain.exe` 被占用，导致 `pip install -e . --force-reinstall` 失败。升级前建议先停止服务：
+
+```bash
+skillsbrain stop
+pip install -e . --force-reinstall --no-deps
+```
+
+如果当前终端还不能直接识别 `skillsbrain` 命令，可改用：
+```bash
+python -m skillsbrain.cli stop
+python -m pip install -e . --force-reinstall --no-deps
+```
 
 ### 安装（离线环境）
 
@@ -76,7 +99,20 @@ skillsbrain serve --port 9000 --skills ./my-skills
 
 # 指定数据根目录（多项目管理）
 skillsbrain serve --data-dir D:/data/project-a
+
+# 查看当前服务状态
+skillsbrain status
+
+# 关闭当前服务
+skillsbrain stop
 ```
+
+`skillsbrain serve` 现在会默认以后台常驻模式启动服务，但命令会阻塞到 `/health/ready` 成功后才返回，避免服务尚未就绪时马上执行 `match`、`list`、`stats` 等命令导致失败。
+
+服务生命周期说明：
+- 服务启动后会一直常驻，直到执行 `skillsbrain stop`、进程异常退出、系统重启/注销，或被外部强制结束。
+- 正常关闭时会触发 FastAPI `shutdown` 生命周期，停止 watcher 并清理运行时元数据。
+- 同一个 `data_dir` 下会维护运行时元数据文件，`serve` 会在启动前检查状态，避免重复启动冲突。
 
 ### 查询技能
 

@@ -1,20 +1,40 @@
 # 安装与排障
 
-## 1. `skillsbrain` 命令不存在
+## 1. 终端找不到 `skillsbrain` 命令
 
-说明当前机器尚未安装 CLI，或环境变量未生效。优先提示安装：
+原因通常是 Python 的 `Scripts` 目录没有加入 PATH。
 
-```bash
-git clone https://github.com/Chenwj9071/SkillsBrain.git
-cd SkillsBrain
-pip install -e .
+Windows（仅让当前终端立即生效）：
+
+```powershell
+$env:PATH = "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts;$env:PATH"
 ```
 
-项目地址：
+如果暂时不想修改 PATH，可直接使用模块入口：
 
-`https://github.com/Chenwj9071/SkillsBrain`
+```bash
+python -m skillsbrain.cli --help
+```
 
-## 2. CLI 已安装，但无法连接服务
+## 2. 重装/升级失败：`WinError 32 ... skillsbrain.exe`
+
+Windows 下如果存在正在运行的 `skillsbrain serve` 常驻进程，系统会锁定 `skillsbrain.exe`，导致重装失败。
+
+建议顺序：
+
+```bash
+skillsbrain stop
+python -m pip install -e . --force-reinstall --no-deps
+```
+
+如果当前终端还不能执行 `skillsbrain`，改用：
+
+```bash
+python -m skillsbrain.cli stop
+python -m pip install -e . --force-reinstall --no-deps
+```
+
+## 3. CLI 报错：无法连接服务
 
 常见报错：
 
@@ -23,44 +43,28 @@ pip install -e .
 处理方式：
 
 ```bash
+skillsbrain status
 skillsbrain serve
 ```
 
-如果技能目录在当前仓库内而不是默认目录，改用：
+如果端口冲突，可换端口：
 
 ```bash
-skillsbrain serve --skills ./skill
-```
-
-## 3. 缺少 Python 依赖
-
-如果执行 CLI 时出现依赖导入错误，按安装流程重新执行：
-
-```bash
-git clone https://github.com/Chenwj9071/SkillsBrain.git
-cd SkillsBrain
-pip install -e .
+skillsbrain serve --port 9000
 ```
 
 ## 4. 新技能没有被检索到
 
 按顺序检查：
 
-1. `SKILL.md` frontmatter 是否有效
-2. 服务启动时是否指向正确技能目录
-3. 是否需要重建索引
+1. 技能目录结构是否正确：每个技能目录中必须有 `SKILL.md`。
+2. 是否启动时指向了正确的技能目录：`skillsbrain serve --skills <dir>`。
+3. 是否需要重建索引：`skillsbrain reindex`。
 
-对应命令：
+## 5. 订阅源不生效
 
-```bash
-skillsbrain list
-skillsbrain reindex
-```
+检查点：
 
-## 5. 当前仓库技能目录与默认目录不一致
-
-SkillsBrain 默认扫描用户目录下的 `~/.skillsbrain/skills`。如果技能在仓库内，例如当前项目的 `./skill`，需要显式指定：
-
-```bash
-skillsbrain serve --skills ./skill
-```
+1. `subscribe` 的目录可访问，且目录内包含符合规范的技能子目录。
+2. 用 `skillsbrain sources` 确认订阅源存在。
+3. 用 `skillsbrain list` 确认技能数量变化。

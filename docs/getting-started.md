@@ -22,6 +22,20 @@ pip install -e .
 pip install .
 ```
 
+### 安装后命令不可用怎么办
+
+安装完成后，如果终端提示找不到 `skillsbrain`，通常是 Python 的 `Scripts` 目录还没加入 PATH。
+
+Windows（当前终端立即生效）：
+```powershell
+$env:PATH = "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts;$env:PATH"
+```
+
+如果暂时不想修改 PATH，也可以直接使用：
+```bash
+python -m skillsbrain.cli --help
+```
+
 ---
 
 ## 2. 安装后可用命令
@@ -34,6 +48,8 @@ skillsbrain
 
 可用子命令包括：
 - `serve`
+- `status`
+- `stop`
 - `match`
 - `list`
 - `stats`
@@ -65,6 +81,21 @@ skillsbrain serve --data-dir D:/data/project-a
 - `--skills` 只影响技能扫描目录
 - `--data-dir` 可指定整套数据根目录，适合多项目管理
 - 索引和日志默认保存在用户目录下的 `~/.skillsbrain/`
+- `skillsbrain serve` 会把服务拉起为后台常驻进程，但命令本身会阻塞到服务 ready 后再返回
+
+常用服务管理命令：
+
+```bash
+skillsbrain status
+skillsbrain stop
+```
+
+升级 / 重装前建议先执行一次 `skillsbrain stop`。Windows 下如果服务仍在运行，`pip install -e . --force-reinstall` 可能会因为 `skillsbrain.exe` 被占用而失败。
+
+生命周期说明：
+- 服务默认持续运行，直到执行 `skillsbrain stop`、进程异常退出、系统重启/注销，或被外部强制终止
+- 正常关闭时会触发服务 `shutdown` 生命周期并停止 watcher
+- 再次执行 `skillsbrain serve` 时，会先检查运行时状态，避免重复启动冲突
 
 ---
 
