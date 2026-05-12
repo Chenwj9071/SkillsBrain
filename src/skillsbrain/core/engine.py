@@ -21,6 +21,22 @@ CHINESE_FILLER_PATTERNS = (
     "份",
 )
 
+LOW_SIGNAL_CJK_VARIANTS = {
+    "生成",
+    "查询",
+    "查看",
+    "修复",
+    "排查",
+    "处理",
+    "分析",
+    "整理",
+    "输出",
+    "更新",
+    "昨天",
+    "今天",
+    "明天",
+}
+
 SYNONYM_GROUPS = (
     ("日报", "daily report", "work daily report", "总结今日工作", "写日报", "更新日报"),
     ("前端设计", "frontend design", "web design", "ui design", "页面设计"),
@@ -51,7 +67,15 @@ class SkillEngine:
         if compact:
             variants.add(compact)
         variants.update(self._extract_intent_phrases(base))
-        return [item for item in variants if item]
+        filtered_variants = []
+        for item in variants:
+            if not item:
+                continue
+            compact_item = item.replace(" ", "")
+            if compact_item in LOW_SIGNAL_CJK_VARIANTS:
+                continue
+            filtered_variants.append(item)
+        return filtered_variants
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:
@@ -66,6 +90,20 @@ class SkillEngine:
                 for start in range(0, length - size + 1):
                     expanded_cjk_tokens.append(chunk[start:start + size])
         return english_tokens + expanded_cjk_tokens
+
+    @staticmethod
+    def _contains_variant(field_values: list[str], variant: str) -> bool:
+        compact_variant = variant.replace(" ", "")
+        for value in field_values:
+            normalized = (value or "").strip()
+            if not normalized:
+                continue
+            compact_value = normalized.replace(" ", "")
+            if normalized == variant or compact_value == compact_variant:
+                return True
+            if len(compact_variant) >= 4 and compact_variant in compact_value:
+                return True
+        return False
 
     @classmethod
     def _extract_intent_phrases(cls, text: str) -> set[str]:
@@ -157,9 +195,9 @@ class SkillEngine:
                 best = max(best, 0.9)
             if variant and (variant in searchable["skill_id"] or compact_variant in searchable["skill_id"].replace(" ", "")):
                 best = max(best, 0.88)
-            if variant and variant in searchable["aliases"]:
+            if variant and self._contains_variant(aliases, variant):
                 best = max(best, 0.82)
-            if variant and variant in searchable["keywords"]:
+            if variant and self._contains_variant(keywords, variant):
                 best = max(best, 0.84)
             if variant and variant in searchable["tags"]:
                 best = max(best, 0.8)
@@ -212,7 +250,7 @@ class SkillEngine:
             vector_score = float(result.get("score", 0.0))
             lexical_score = self._lexical_score(result, query_variants, query_tokens)
             final_score = self._blend_scores(vector_score, lexical_score)
-            if final_score >= min_accept or lexical_score >= 0.82:
+            if final_score >= min_accept or (lexical_score >= 0.82 and vector_score >= 0.2):
                 enriched = dict(result)
                 enriched["vector_score"] = round(vector_score, 4)
                 enriched["lexical_score"] = lexical_score
