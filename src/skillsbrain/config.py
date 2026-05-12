@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings
 # HuggingFace 镜像（加速国内下载）
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 
 def _default_base_dir() -> Path:
@@ -38,7 +40,7 @@ class Settings(BaseSettings):
     similarity_threshold: float = 0.65  # 精排阈值
 
     # Web / CORS
-    cors_origins: str = "http://127.0.0.1,http://localhost"
+    cors_origins: str = "http://127.0.0.1,http://localhost,null"
 
     # 文件监听
     debounce_seconds: float = 1.0

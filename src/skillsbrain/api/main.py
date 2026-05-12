@@ -1,15 +1,18 @@
 """FastAPI 应用。"""
 
+import json
 import logging
 import os
 import sys
 import threading
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 from skillsbrain.config import settings
@@ -17,7 +20,7 @@ from skillsbrain.core.engine import SkillEngine
 from skillsbrain.core.indexer import SkillIndexer
 from skillsbrain.core.watcher import start_watcher, stop_watcher
 from skillsbrain.runtime import SERVICE_NAME, now_iso, write_runtime_file
-from skillsbrain.utils.call_logger import call_logger
+from skillsbrain.utils.call_logger import call_logger, SHANGHAI_TZ
 
 
 def create_app(
@@ -50,7 +53,7 @@ def create_app(
         description="Local skill routing engine for AI Agents",
     )
 
-    cors_origins = settings.cors_origin_list or ["http://127.0.0.1", "http://localhost"]
+    cors_origins = settings.cors_origin_list or ["http://127.0.0.1", "http://localhost", "null"]
     allow_credentials = "*" not in cors_origins
     app.add_middleware(
         CORSMiddleware,
@@ -158,6 +161,8 @@ def create_app(
         source_root: str
         source_rel_path: str
         score: float
+        vector_score: Optional[float] = None
+        lexical_score: Optional[float] = None
 
     class SubscribeRequest(BaseModel):
         path: str
@@ -181,16 +186,30 @@ def create_app(
 
         skills = []
         for result in results:
+            compatibility = result.get("compatibility", [])
+            if isinstance(compatibility, str):
+                compatibility = [item for item in compatibility.split(",") if item]
+
+            tags = result.get("tags", [])
+            if isinstance(tags, str):
+                tags = [item for item in tags.split(",") if item]
+
+            enabled_value = result.get("enabled", True)
+            if isinstance(enabled_value, str):
+                enabled = enabled_value.lower() == "true"
+            else:
+                enabled = bool(enabled_value)
+
             skills.append(
                 SkillInfo(
                     skill_id=result["skill_id"],
                     name=result["name"],
                     description=result["description"],
-                    compatibility=[item for item in result.get("compatibility", "").split(",") if item],
-                    tags=[item for item in result.get("tags", "").split(",") if item],
+                    compatibility=compatibility,
+                    tags=tags,
                     version=result.get("version", "1.0.0"),
                     author=result.get("author", ""),
-                    enabled=result.get("enabled", "True").lower() == "true",
+                    enabled=enabled,
                     created_at=result.get("created_at", ""),
                     file_path=result.get("file_path", ""),
                     relative_path=result.get("relative_path", ""),
@@ -199,6 +218,8 @@ def create_app(
                     source_root=result.get("source_root", ""),
                     source_rel_path=result.get("source_rel_path", ""),
                     score=result["score"],
+                    vector_score=result.get("vector_score"),
+                    lexical_score=result.get("lexical_score"),
                 )
             )
 
@@ -287,6 +308,74 @@ def create_app(
     @app.get("/api/admin/status")
     def admin_status() -> dict:
         return public_runtime()
+
+    @app.get("/api/logs/calls")
+    def get_call_logs(
+        date: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        """获取调用日志"""
+        call_log_dir = log_dir / "calls"
+        if not call_log_dir.exists():
+            return {"total": 0, "offset": offset, "limit": limit, "logs": []}
+
+        # 默认使用今天日期
+        if not date:
+            date = datetime.now(SHANGHAI_TZ).strftime("%Y-%m-%d")
+
+        log_file = call_log_dir / f"{date}.jsonl"
+        if not log_file.exists():
+            return {"total": 0, "offset": offset, "limit": limit, "logs": []}
+
+        logs = []
+        with open(log_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        logs.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
+
+        # 按时间倒序排列
+        logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+        total = len(logs)
+        paginated_logs = logs[offset:offset + limit]
+
+        return {
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "date": date,
+            "logs": paginated_logs,
+        }
+
+    @app.get("/api/logs/dates")
+    def get_log_dates() -> dict:
+        """获取所有可用的日志日期"""
+        call_log_dir = log_dir / "calls"
+        if not call_log_dir.exists():
+            return {"dates": []}
+
+        dates = []
+        for file in sorted(call_log_dir.glob("*.jsonl"), reverse=True):
+            dates.append(file.stem)  # 文件名即日期
+
+        return {"dates": dates}
+
+    @app.get("/")
+    def serve_dashboard() -> FileResponse:
+        """提供 Web 看板"""
+        # 从 api/main.py 向上 4 级到项目根目录
+        dashboard_path = Path(__file__).parent.parent.parent.parent / "web" / "index.html"
+        if dashboard_path.exists():
+            return FileResponse(dashboard_path)
+        return {"message": "SkillsBrain API is running. See /docs for API documentation."}
+
+    @app.get("/favicon.ico")
+    def favicon() -> Response:
+        return Response(status_code=204)
 
     @app.post("/api/admin/shutdown")
     def admin_shutdown(req: ShutdownRequest) -> dict:

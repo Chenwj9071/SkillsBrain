@@ -1,0 +1,220 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img [ref=e8]
+            - generic [ref=e10]:
+              - paragraph [ref=e11]: Local Skill Routing Console
+              - heading "SkillsBrain 调度台" [level=1] [ref=e12]
+          - paragraph [ref=e13]: 一个更可靠的本地技能控制面板。这里集中查看服务状态、调用轨迹、技能目录、订阅来源和技能匹配效果，不再只是“能看”，而是能真正拿来工作。
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - paragraph [ref=e16]: Service Status
+            - generic [ref=e19]: 服务运行中
+            - paragraph [ref=e20]: 127.0.0.1:8765 · Ready at 2026-04-29T18:04:49+08:00
+          - generic [ref=e21]:
+            - paragraph [ref=e22]: Clock
+            - paragraph [ref=e23]: 2026/5/12 10:40:14
+            - generic [ref=e24]:
+              - button "刷新数据" [ref=e25]
+              - generic [ref=e26]: 保持页面与本地服务同步
+    - generic [ref=e27]:
+      - article [ref=e28]:
+        - paragraph [ref=e29]: Total Skills
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - paragraph [ref=e32]: "90"
+            - paragraph [ref=e33]: 当前索引中的技能总数
+          - generic [ref=e34]: 目录
+      - article [ref=e35]:
+        - paragraph [ref=e36]: Enabled
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - paragraph [ref=e39]: "90"
+            - paragraph [ref=e40]: 当前可用的技能数量
+          - generic [ref=e41]: 在线
+      - article [ref=e42]:
+        - paragraph [ref=e43]: Sources
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - paragraph [ref=e46]: "1"
+            - paragraph [ref=e47]: 已接入的来源目录
+          - generic [ref=e48]: 订阅
+      - article [ref=e49]:
+        - paragraph [ref=e50]: Call Volume
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - paragraph [ref=e53]: "6"
+            - paragraph [ref=e54]: 当前日期的调用记录数
+          - generic [ref=e55]: 日志
+    - generic [ref=e56]:
+      - article [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - paragraph [ref=e60]: Overview
+            - heading "运行概览" [level=2] [ref=e61]
+            - paragraph [ref=e62]: 这里不是简单的数字堆叠，而是当前服务健康度、内容密度和最近活跃度的快速窗口。
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - paragraph [ref=e65]: 活跃率
+              - paragraph [ref=e66]: 100%
+            - generic [ref=e67]:
+              - paragraph [ref=e68]: 最新日志日
+              - paragraph [ref=e69]: 2026-05-12
+            - generic [ref=e70]:
+              - paragraph [ref=e71]: 技能密度
+              - paragraph [ref=e72]: "90.0"
+      - article [ref=e73]:
+        - paragraph [ref=e74]: Snapshot
+        - heading "系统摘要" [level=2] [ref=e75]
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - generic [ref=e78]: "1"
+            - text: 当前索引共 90 个技能，其中 90 个处于启用状态。
+          - generic [ref=e79]:
+            - generic [ref=e80]: "2"
+            - text: 系统已接入 1 个来源目录，平均每个来源约 90.0 个技能。
+          - generic [ref=e81]:
+            - generic [ref=e82]: "3"
+            - text: 当前日志日期共记录 6 次调用，可直接在时间线中排查命中结果。
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - paragraph [ref=e86]: Workspace
+          - heading "工作区" [level=2] [ref=e87]
+        - generic [ref=e88]:
+          - button "调用日志" [ref=e89]
+          - button "技能目录" [ref=e90]
+          - button "来源订阅" [ref=e91]
+          - button "匹配测试" [ref=e92]
+      - generic [ref=e95]:
+        - generic [ref=e96]:
+          - paragraph [ref=e97]: Filters
+          - heading "日志视图" [level=3] [ref=e98]
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - generic [ref=e101]: 日期
+              - combobox "日期" [ref=e102]:
+                - option "2026-05-12" [selected]
+                - option "2026-05-11"
+                - option "2026-05-09"
+                - option "2026-05-08"
+                - option "2026-05-07"
+                - option "2026-05-06"
+                - option "2026-04-30"
+                - option "2026-04-28"
+                - option "2026-04-27"
+                - option "2026-04-24"
+                - option "2026-04-23"
+                - option "2026-04-22"
+                - option "2026-04-20"
+            - generic [ref=e103]:
+              - button "刷新日志" [ref=e104]
+              - button "最新" [ref=e105]
+            - generic [ref=e106]:
+              - paragraph [ref=e107]: Records
+              - paragraph [ref=e108]: "6"
+              - paragraph [ref=e109]: 第 1 / 1 页
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - paragraph [ref=e113]: 调用时间线
+              - paragraph [ref=e114]: 按时间倒序查看匹配调用、命中技能和延迟。
+            - generic [ref=e115]:
+              - button "上一页" [disabled] [ref=e116]
+              - button "下一页" [disabled] [ref=e117]
+          - generic [ref=e118]:
+            - article [ref=e119]:
+              - generic [ref=e120]:
+                - generic [ref=e121]:
+                  - generic [ref=e122]:
+                    - generic [ref=e123]: codex
+                    - generic [ref=e124]: 2026-05-12T10:32:58.639377+08:00
+                    - generic [ref=e125]: 5 个命中
+                  - paragraph [ref=e126]: 排查 SkillsBrain 前端页 127.0.0.1:8765 渲染不正常
+                - generic [ref=e127]: 107 ms
+              - generic [ref=e128]:
+                - generic [ref=e129]: 1. codelocator 0.77
+                - generic [ref=e130]: 2. android-comment-rules 0.55
+                - generic [ref=e131]: 3. android-ranklist-rules 0.55
+                - generic [ref=e132]: 4. android-widget-common-rules 0.55
+                - generic [ref=e133]: 5. kugou-user-crash-troubleshoot 0.55
+            - article [ref=e134]:
+              - generic [ref=e135]:
+                - generic [ref=e136]:
+                  - generic [ref=e137]:
+                    - generic [ref=e138]: unknown
+                    - generic [ref=e139]: 2026-05-12T10:26:29.673302+08:00
+                    - generic [ref=e140]: 5 个命中
+                  - paragraph [ref=e141]: 生成昨天的日报
+                - generic [ref=e142]: 107 ms
+              - generic [ref=e143]:
+                - generic [ref=e144]: 1. work-daily-report 0.93
+                - generic [ref=e145]: 2. kg-daily-report 0.85
+                - generic [ref=e146]: 3. kugou-user-crash-troubleshoot 0.73
+                - generic [ref=e147]: 4. android-knowledge-doc 0.55
+                - generic [ref=e148]: 5. ab-version-query-link 0.55
+            - article [ref=e149]:
+              - generic [ref=e150]:
+                - generic [ref=e151]:
+                  - generic [ref=e152]:
+                    - generic [ref=e153]: codex
+                    - generic [ref=e154]: 2026-05-12T10:26:11.035662+08:00
+                    - generic [ref=e155]: 5 个命中
+                  - paragraph [ref=e156]: 生成昨天的日报
+                - generic [ref=e157]: 146 ms
+              - generic [ref=e158]:
+                - generic [ref=e159]: 1. work-daily-report 0.93
+                - generic [ref=e160]: 2. kg-daily-report 0.85
+                - generic [ref=e161]: 3. kugou-user-crash-troubleshoot 0.73
+                - generic [ref=e162]: 4. android-knowledge-doc 0.55
+                - generic [ref=e163]: 5. ab-version-query-link 0.55
+            - article [ref=e164]:
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - generic [ref=e168]: codex
+                    - generic [ref=e169]: 2026-05-12T10:25:49.730063+08:00
+                    - generic [ref=e170]: 5 个命中
+                  - paragraph [ref=e171]: 生成昨天的日报
+                - generic [ref=e172]: 60 ms
+              - generic [ref=e173]:
+                - generic [ref=e174]: 1. work-daily-report 0.93
+                - generic [ref=e175]: 2. kg-daily-report 0.85
+                - generic [ref=e176]: 3. kugou-user-crash-troubleshoot 0.73
+                - generic [ref=e177]: 4. android-knowledge-doc 0.55
+                - generic [ref=e178]: 5. ab-version-query-link 0.55
+            - article [ref=e179]:
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - generic [ref=e182]:
+                    - generic [ref=e183]: codex
+                    - generic [ref=e184]: 2026-05-12T10:14:48.391446+08:00
+                    - generic [ref=e185]: 5 个命中
+                  - paragraph [ref=e186]: 生成昨天的日报
+                - generic [ref=e187]: 110 ms
+              - generic [ref=e188]:
+                - generic [ref=e189]: 1. work-daily-report 0.93
+                - generic [ref=e190]: 2. kg-daily-report 0.85
+                - generic [ref=e191]: 3. kugou-user-crash-troubleshoot 0.73
+                - generic [ref=e192]: 4. android-knowledge-doc 0.55
+                - generic [ref=e193]: 5. ab-version-query-link 0.55
+            - article [ref=e194]:
+              - generic [ref=e195]:
+                - generic [ref=e196]:
+                  - generic [ref=e197]:
+                    - generic [ref=e198]: codex
+                    - generic [ref=e199]: 2026-05-12T09:58:20.294091+08:00
+                    - generic [ref=e200]: 5 个命中
+                  - paragraph [ref=e201]: 生成昨天日报
+                - generic [ref=e202]: 148 ms
+              - generic [ref=e203]:
+                - generic [ref=e204]: 1. work-daily-report 0.92
+                - generic [ref=e205]: 2. kg-daily-report 0.84
+                - generic [ref=e206]: 3. android-widget-feature-test-rules 0.73
+                - generic [ref=e207]: 4. android-knowledge-doc 0.55
+                - generic [ref=e208]: 5. ab-version-query-link 0.55
+  - generic:
+    - generic: 提示

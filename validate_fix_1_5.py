@@ -34,6 +34,8 @@ def main():
             name: alpha-skill
             description: alpha task
             compatibility: claude_code
+            aliases: [alpha helper]
+            keywords: [alpha, helper]
             tags: alpha
             enabled: true
             ---
@@ -65,6 +67,10 @@ def main():
     assert alpha is not None and alpha.skill_id == "alpha"
     assert alpha.compatibility == ["claude_code"]
     assert alpha.tags == ["alpha"]
+    assert isinstance(alpha.search_text, str)
+    assert isinstance(alpha.aliases, list)
+    assert "alpha helper" in alpha.aliases
+    assert alpha.keywords == ["alpha", "helper"]
     assert beta is not None and beta.skill_id == "beta"
     assert beta.enabled is False
     assert beta.tags == ["beta", "sheet"]
@@ -104,7 +110,7 @@ def main():
 
     engine = SkillEngine(indexer)
     engine._semantic_recall = lambda query, top_k: [
-        {"name": "only-codex", "compatibility": "codex", "enabled": "True", "score": 0.9},
+        {"skill_id": "local:only-codex", "name": "only-codex", "compatibility": "codex", "enabled": "True", "score": 0.9},
     ]
     assert engine.match("x", agent_type="claude_code", top_k=5) == []
 

@@ -39,14 +39,22 @@ class SkillIndexer:
     def model(self):
         if self._model is None:
             logger.info(f"Loading embedding model: {settings.embedding_model} on device: {settings.device}")
-            self._model = SentenceTransformer(settings.embedding_model, device=settings.device)
+            self._model = SentenceTransformer(
+                settings.embedding_model,
+                device=settings.device,
+                local_files_only=True,
+            )
             logger.info("Embedding model loaded.")
         return self._model
 
     def _build_text(self, skill: SkillMeta) -> str:
-        parts = [skill.name, skill.description]
+        parts = [skill.name, skill.description, skill.search_text]
         if skill.tags:
             parts.extend(skill.tags)
+        if skill.aliases:
+            parts.extend(skill.aliases)
+        if skill.keywords:
+            parts.extend(skill.keywords)
         return " | ".join(parts)
 
     def _metadata_from_skill(self, skill: SkillMeta) -> dict:
@@ -62,15 +70,19 @@ class SkillIndexer:
             "created_at": skill.created_at,
             "file_path": skill.file_path,
             "relative_path": skill.relative_path,
+            "search_text": skill.search_text,
+            "aliases": "||".join(skill.aliases),
+            "keywords": "||".join(skill.keywords),
             "source_type": "local",
             "source_name": "local",
             "source_root": str(self.skills_dir),
             "source_rel_path": skill.relative_path,
         }
 
-    def _skill_id_from_path(self, file_path: Path) -> str:
+    def _skill_id_from_path(self, file_path: Path, root: Path | None = None) -> str:
         resolved_path = Path(file_path).resolve()
-        relative_path = resolved_path.relative_to(self.skills_dir)
+        base_root = Path(root or self.skills_dir).resolve()
+        relative_path = resolved_path.relative_to(base_root)
         if relative_path.name == "SKILL.md" and relative_path.parent != Path("."):
             return relative_path.parent.as_posix()
         return relative_path.as_posix()
@@ -86,6 +98,8 @@ class SkillIndexer:
         data = dict(meta)
         data["compatibility"] = [item for item in (data.get("compatibility", "") or "").split(",") if item]
         data["tags"] = [item for item in (data.get("tags", "") or "").split(",") if item]
+        data["aliases"] = [item for item in (data.get("aliases", "") or "").split("||") if item]
+        data["keywords"] = [item for item in (data.get("keywords", "") or "").split("||") if item]
         data["enabled"] = str(data.get("enabled", "True")).lower() == "true"
         return data
 
@@ -195,26 +209,29 @@ class SkillIndexer:
     def list_subscriptions(self) -> list[dict]:
         return [item.to_dict() for item in self._subscription_store.load()]
 
-    def update_skill(self, file_path: Path):
+    def update_skill(self, file_path: Path, source_name: str = "local", source_root: Path | None = None):
+        base_root = Path(source_root or self.skills_dir).resolve()
+        parser = SkillParser(base_root)
         try:
-            skill_id = self._skill_id_from_path(file_path)
+            skill_id = self._skill_id_from_path(file_path, root=base_root)
         except Exception:
             logger.exception("Failed to resolve skill id for path: %s", file_path)
             return
 
-        skill = self._parser.parse(file_path)
+        skill = parser.parse(file_path)
         if skill:
-            self._upsert([skill], source_name="local", source_root=str(self.skills_dir))
+            self._upsert([skill], source_name=source_name, source_root=str(base_root))
         else:
             try:
-                self._delete_ids([f"local:{skill_id}"])
+                self._delete_ids([f"{source_name}:{skill_id}"])
             except Exception:
                 logger.exception("Failed to remove invalid skill from index: %s", file_path)
 
-    def delete_skill(self, file_path: Path):
+    def delete_skill(self, file_path: Path, source_name: str = "local", source_root: Path | None = None):
+        base_root = Path(source_root or self.skills_dir).resolve()
         try:
-            skill_id = self._skill_id_from_path(file_path)
-            self._delete_ids([f"local:{skill_id}"])
+            skill_id = self._skill_id_from_path(file_path, root=base_root)
+            self._delete_ids([f"{source_name}:{skill_id}"])
             logger.info("Removed skill '%s' from index.", skill_id)
         except Exception:
             logger.exception("Failed to delete skill for path: %s", file_path)
@@ -233,6 +250,10 @@ class SkillIndexer:
             score = round(1 - dist, 4)
             results.append({**meta, "score": score})
         return results
+
+    def iter_skills(self) -> list[dict]:
+        data = self._collection.get(include=["metadatas"])
+        return [self._normalize_metadata(meta) for meta in data.get("metadatas", [])]
 
     def list_skills(
         self,

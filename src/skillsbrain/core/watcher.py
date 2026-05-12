@@ -19,24 +19,29 @@ class SkillChangeHandler(FileSystemEventHandler):
         self.root = Path(root).resolve()
         self.source_name = source_name
         self.debounce = debounce
-        self._pending: dict[str, float] = {}
+        self._pending: dict[str, tuple[int, str]] = {}
+        self._sequence = 0
         self._lock = threading.Lock()
 
     def _debounced(self, path: str, op: str):
         with self._lock:
-            now = time.time()
-            self._pending[path] = now
+            self._sequence += 1
+            token = self._sequence
+            self._pending[path] = (token, op)
 
         def _flush():
             time.sleep(self.debounce)
             with self._lock:
-                trigger_time = self._pending.pop(path, None)
-            if trigger_time and trigger_time == now:
-                p = Path(path)
-                if op == "deleted":
-                    self.indexer.delete_skill(p)
-                else:
-                    self.indexer.update_skill(p)
+                pending = self._pending.get(path)
+                if pending is None or pending[0] != token:
+                    return
+                _, final_op = self._pending.pop(path)
+
+            p = Path(path)
+            if final_op == "deleted":
+                self.indexer.delete_skill(p, source_name=self.source_name, source_root=self.root)
+            else:
+                self.indexer.update_skill(p, source_name=self.source_name, source_root=self.root)
 
         threading.Thread(target=_flush, daemon=True).start()
 

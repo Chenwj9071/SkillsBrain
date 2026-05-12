@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillsBrain | 本地技能调度台</title>
+    <meta name="description" content="SkillsBrain 本地技能调度与检索控制台">
+    <style>
+        :root {
+            --paper: #f6f1e8;
+            --shell: #fffdf8;
+            --ink: #1f2a2a;
+            --mist: #687678;
+            --line: #d9d1c5;
+            --teal: #1f8a84;
+            --teal-deep: #145f5b;
+            --coral: #db7c56;
+            --sand: #eadfcf;
+            --gold: #b99452;
+            --success: #1f8a5b;
+            --danger: #b64d3e;
+            --warning: #a7751a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(219, 124, 86, 0.16), transparent 28%),
+                radial-gradient(circle at top right, rgba(31, 138, 132, 0.14), transparent 24%),
+                linear-gradient(180deg, #fcf8f1 0%, #f6f1e8 45%, #efe7da 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.26) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.24) 1px, transparent 1px);
+            background-size: 72px 72px;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 80%);
+        }
+
+        .glass-panel {
+            background: rgba(255, 253, 248, 0.82);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(217, 209, 197, 0.8);
+            box-shadow: 0 20px 60px rgba(31, 42, 42, 0.08);
+        }
+
+        .section-card {
+            background: rgba(255, 253, 248, 0.92);
+            border: 1px solid rgba(217, 209, 197, 0.88);
+            box-shadow: 0 12px 32px rgba(31, 42, 42, 0.06);
+        }
+
+        .tab-panel > div {
+            align-items: start;
+        }
+
+        #tabs {
+            align-items: center;
+        }
+
+        #panel-logs > div,
+        #panel-skills > div,
+        #panel-sources > div,
+        #panel-test > div {
+            align-items: start;
+        }
+
+        #logsContainer > article,
+        #sourcesContainer > article,
+        #testResultsContainer > article {
+            margin: 0;
+        }
+
+        .metric-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card .mt-5 {
+            margin-top: 0.45rem;
+        }
+
+        .metric-card .mt-2 {
+            margin-top: 0.35rem;
+        }
+
+        .metric-card .text-4xl {
+            line-height: 0.92;
+        }
+
+        .metric-card p {
+            margin-bottom: 0;
+        }
+
+        .metric-card > div > div {
+            display: grid;
+            gap: 0.35rem;
+            align-content: start;
+        }
+
+        .metric-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -10% -55% auto;
+            width: 120px;
+            height: 120px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(31, 138, 132, 0.20), transparent 70%);
+        }
+
+        .tab-button {
+            border: 1px solid transparent;
+            transition: all 180ms ease;
+        }
+
+        .tab-button.active {
+            background: var(--ink);
+            color: #fffdf8;
+            box-shadow: 0 10px 24px rgba(31, 42, 42, 0.16);
+        }
+
+        .tab-button:not(.active):hover {
+            border-color: rgba(217, 209, 197, 0.95);
+            background: rgba(255, 253, 248, 0.9);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 14px 10px;
+            border-bottom: 1px solid rgba(217, 209, 197, 0.82);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .data-table th {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--mist);
+        }
+
+        .fade-enter {
+            animation: fadeEnter 240ms ease;
+        }
+
+        @keyframes fadeEnter {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .scroll-shell {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(31, 42, 42, 0.28) transparent;
+        }
+
+        .scroll-shell::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .scroll-shell::-webkit-scrollbar-thumb {
+            background: rgba(31, 42, 42, 0.24);
+            border-radius: 999px;
+        }
+
+        .text-balance {
+            text-wrap: balance;
+        }
+
+        .font-display {
+            font-family: Georgia, "Times New Roman", "Noto Serif SC", serif;
+        }
+
+        .font-body {
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        }
+
+        .font-mono {
+            font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+        }
+
+        .relative { position: relative; }
+        .fixed { position: fixed; }
+        .bottom-5 { bottom: 1.25rem; }
+        .right-5 { right: 1.25rem; }
+        .z-50 { z-index: 50; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mr-2 { margin-right: 0.5rem; }
+        .mt-1 { margin-top: 0.25rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-3 { margin-top: 0.75rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-5 { margin-top: 1.25rem; }
+        .mt-6 { margin-top: 1.5rem; }
+        .block { display: block; }
+        .hidden { display: none; }
+        .flex { display: flex; }
+        .inline-flex { display: inline-flex; }
+        .grid { display: grid; }
+        .w-full { width: 100%; }
+        .w-\[116px\] { width: 116px; }
+        .h-4 { height: 1rem; }
+        .w-4 { width: 1rem; }
+        .h-6 { height: 1.5rem; }
+        .w-6 { width: 1.5rem; }
+        .h-7 { height: 1.75rem; }
+        .w-7 { width: 1.75rem; }
+        .h-14 { height: 3.5rem; }
+        .w-14 { width: 3.5rem; }
+        .min-h-\[120px\] { min-height: 120px; }
+        .min-w-\[860px\] { min-width: 860px; }
+        .max-w-2xl { max-width: 42rem; }
+        .max-w-3xl { max-width: 48rem; }
+        .max-w-7xl { max-width: 80rem; }
+        .max-w-\[320px\] { max-width: 320px; }
+        .max-h-\[720px\] { max-height: 720px; }
+        .min-h-\[120px\] { min-height: 120px; }
+        .items-center { align-items: center; }
+        .items-end { align-items: flex-end; }
+        .items-start { align-items: flex-start; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .flex-1 { flex: 1 1 0%; }
+        .flex-col { flex-direction: column; }
+        .flex-wrap { flex-wrap: wrap; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-3 { gap: 0.75rem; }
+        .gap-4 { gap: 1rem; }
+        .gap-6 { gap: 1.5rem; }
+        .space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.25rem; }
+        .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
+        .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+        .overflow-x-auto { overflow-x: auto; }
+        .overflow-y-auto { overflow-y: auto; }
+        .rounded { border-radius: 0.25rem; }
+        .rounded-2xl { border-radius: 1rem; }
+        .rounded-\[18px\] { border-radius: 18px; }
+        .rounded-\[20px\] { border-radius: 20px; }
+        .rounded-\[22px\] { border-radius: 22px; }
+        .rounded-\[24px\] { border-radius: 24px; }
+        .rounded-\[26px\] { border-radius: 26px; }
+        .rounded-\[28px\] { border-radius: 28px; }
+        .rounded-\[30px\] { border-radius: 30px; }
+        .rounded-\[32px\] { border-radius: 32px; }
+        .rounded-full { border-radius: 9999px; }
+        .border { border: 1px solid rgba(217, 209, 197, 0.88); }
+        .border-b { border-bottom: 1px solid rgba(217, 209, 197, 0.88); }
+        .border-dashed { border-style: dashed; }
+        .border-line { border-color: var(--line); }
+        .border-line\/80 { border-color: rgba(217, 209, 197, 0.8); }
+        .border-red-200 { border-color: #fecaca; }
+        .border-white\/60 { border-color: rgba(255, 255, 255, 0.6); }
+        .bg-ink { background-color: var(--ink); }
+        .bg-paper { background-color: var(--paper); }
+        .bg-paper\/70 { background-color: rgba(246, 241, 232, 0.7); }
+        .bg-coral\/12 { background-color: rgba(219, 124, 86, 0.12); }
+        .bg-red-50 { background-color: #fef2f2; }
+        .bg-sand { background-color: var(--sand); }
+        .bg-shell { background-color: var(--shell); }
+        .bg-teal\/10 { background-color: rgba(31, 138, 132, 0.1); }
+        .bg-warning { background-color: var(--warning); }
+        .bg-white\/70 { background-color: rgba(255, 255, 255, 0.7); }
+        .bg-white\/72 { background-color: rgba(255, 255, 255, 0.72); }
+        .bg-white\/75 { background-color: rgba(255, 255, 255, 0.75); }
+        .bg-white\/78 { background-color: rgba(255, 255, 255, 0.78); }
+        .bg-white\/80 { background-color: rgba(255, 255, 255, 0.8); }
+        .bg-amber-100 { background-color: #fef3c7; }
+        .bg-emerald-100 { background-color: #d1fae5; }
+        .bg-slate-100 { background-color: #f1f5f9; }
+        .bg-gradient-to-r { background-image: linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to)); }
+        .bg-gradient-to-br { background-image: linear-gradient(to bottom right, var(--tw-gradient-from), var(--tw-gradient-via, transparent), var(--tw-gradient-to)); }
+        .from-teal { --tw-gradient-from: var(--teal); }
+        .from-teal\/15 { --tw-gradient-from: rgba(31, 138, 132, 0.15); }
+        .via-white { --tw-gradient-via: #ffffff; }
+        .to-coral\/20 { --tw-gradient-to: rgba(219, 124, 86, 0.2); }
+        .to-tealDeep { --tw-gradient-to: var(--teal-deep); }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-white { color: #ffffff; }
+        .text-shell { color: var(--shell); }
+        .text-ink { color: var(--ink); }
+        .text-mist { color: var(--mist); }
+        .text-teal { color: var(--teal); }
+        .text-tealDeep { color: var(--teal-deep); }
+        .text-red-600 { color: #dc2626; }
+        .text-amber-700 { color: #b45309; }
+        .text-emerald-700 { color: #047857; }
+        .text-slate-500 { color: #64748b; }
+        .text-\[\#a14a28\] { color: #a14a28; }
+        .text-xs { font-size: 0.75rem; }
+        .text-sm { font-size: 0.875rem; }
+        .text-base { font-size: 1rem; }
+        .text-lg { font-size: 1.125rem; }
+        .text-xl { font-size: 1.25rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .text-3xl { font-size: 1.875rem; }
+        .text-4xl { font-size: 2.25rem; }
+        .text-\[11px\] { font-size: 11px; }
+        .text-\[12px\] { font-size: 12px; }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+        .leading-6 { line-height: 1.5rem; }
+        .leading-7 { line-height: 1.75rem; }
+        .leading-none { line-height: 1; }
+        .uppercase { text-transform: uppercase; }
+        .tracking-\[0\.18em\] { letter-spacing: 0.18em; }
+        .tracking-\[0\.24em\] { letter-spacing: 0.24em; }
+        .tracking-\[0\.2em\] { letter-spacing: 0.2em; }
+        .tracking-\[0\.35em\] { letter-spacing: 0.35em; }
+        .p-4 { padding: 1rem; }
+        .p-5 { padding: 1.25rem; }
+        .p-6 { padding: 1.5rem; }
+        .p-8 { padding: 2rem; }
+        .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+        .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+        .py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+        .pb-4 { padding-bottom: 1rem; }
+        .pr-1 { padding-right: 0.25rem; }
+        .outline-none { outline: none; }
+        .transition { transition: all 180ms ease; }
+        .transition-all { transition: all 180ms ease; }
+        .duration-300 { transition-duration: 300ms; }
+        .translate-y-6 { transform: translateY(1.5rem); }
+        .opacity-0 { opacity: 0; }
+        .pointer-events-none { pointer-events: none; }
+        .whitespace-nowrap { white-space: nowrap; }
+        .shadow-soft { box-shadow: 0 20px 60px rgba(31, 42, 42, 0.1); }
+        .hover\:bg-\[\#111818\]:hover { background-color: #111818; }
+        .hover\:bg-\[\#141b1b\]:hover { background-color: #141b1b; }
+        .hover\:bg-red-50:hover { background-color: #fef2f2; }
+        .hover\:bg-sand\/50:hover { background-color: rgba(234, 223, 207, 0.5); }
+        .hover\:opacity-95:hover { opacity: 0.95; }
+        .focus\:border-teal:focus { border-color: var(--teal); }
+        .focus\:ring-2:focus { box-shadow: 0 0 0 2px rgba(31, 138, 132, 0.15); }
+        .focus\:ring-teal\/15:focus { box-shadow: 0 0 0 2px rgba(31, 138, 132, 0.15); }
+        .focus\:ring-teal\/20:focus { box-shadow: 0 0 0 2px rgba(31, 138, 132, 0.2); }
+        .ring-1 { box-shadow: inset 0 0 0 1px currentColor; }
+        .ring-emerald-200 { color: #a7f3d0; }
+        .ring-slate-200 { color: #e2e8f0; }
+
+        @media (min-width: 640px) {
+            .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
+        @media (min-width: 768px) {
+            .md\:flex-row { flex-direction: row; }
+            .md\:items-end { align-items: flex-end; }
+            .md\:items-start { align-items: flex-start; }
+            .md\:justify-between { justify-content: space-between; }
+            .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .md\:p-5 { padding: 1.25rem; }
+            .md\:p-7 { padding: 1.75rem; }
+            .md\:p-8 { padding: 2rem; }
+            .md\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+            .md\:py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+            .md\:text-3xl { font-size: 1.875rem; }
+            .md\:text-5xl { font-size: 3rem; }
+            .md\:text-base { font-size: 1rem; }
+        }
+
+        @media (min-width: 1024px) {
+            .lg\:flex { display: flex; }
+            .lg\:flex-row { flex-direction: row; }
+            .lg\:items-center { align-items: center; }
+            .lg\:items-end { align-items: flex-end; }
+            .lg\:justify-between { justify-content: space-between; }
+            .lg\:min-w-\[360px\] { min-width: 360px; }
+            .lg\:grid-cols-\[1\.45fr_0\.85fr\] { grid-template-columns: 1.45fr 0.85fr; }
+        }
+
+        @media (min-width: 1280px) {
+            .xl\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .xl\:grid-cols-\[280px_1fr\] { grid-template-columns: 280px 1fr; }
+            .xl\:grid-cols-\[300px_1fr\] { grid-template-columns: 300px 1fr; }
+            .xl\:grid-cols-\[340px_1fr\] { grid-template-columns: 340px 1fr; }
+            .xl\:grid-cols-\[380px_1fr\] { grid-template-columns: 380px 1fr; }
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="font-body text-ink">
+    <div class="relative mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+        <header class="glass-panel rounded-[28px] p-6 md:p-8">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div class="max-w-3xl">
+                    <div class="mb-4 flex items-center gap-3">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/60 bg-gradient-to-br from-teal/15 via-white to-coral/20 shadow-soft">
+                            <svg class="h-7 w-7 text-tealDeep" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 3L4 14h6l-1 7 11-13h-7V3z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-mono text-[11px] uppercase tracking-[0.35em] text-mist">Local Skill Routing Console</p>
+                            <h1 class="font-display text-3xl text-ink md:text-5xl">SkillsBrain 调度台</h1>
+                        </div>
+                    </div>
+                    <p class="max-w-2xl text-balance text-sm leading-7 text-mist md:text-base">
+                        一个更可靠的本地技能控制面板。这里集中查看服务状态、调用轨迹、技能目录、订阅来源和技能匹配效果，不再只是“能看”，而是能真正拿来工作。
+                    </p>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
+                    <div class="rounded-[22px] border border-line bg-white/75 p-4">
+                        <p class="font-mono text-[11px] uppercase tracking-[0.2em] text-mist">Service Status</p>
+                        <div class="mt-3 flex items-center gap-2">
+                            <span class="status-dot bg-warning" id="serviceDot"></span>
+                            <span class="text-sm font-medium text-ink" id="serviceStatus">正在检测服务状态</span>
+                        </div>
+                        <p class="mt-3 text-xs leading-6 text-mist" id="serviceMeta">等待连接本地 API</p>
+                    </div>
+                    <div class="rounded-[22px] border border-line bg-white/75 p-4">
+                        <p class="font-mono text-[11px] uppercase tracking-[0.2em] text-mist">Clock</p>
+                        <p class="mt-3 text-lg font-semibold text-ink" id="currentTime">--</p>
+                        <div class="mt-3 flex items-center gap-2">
+                            <button id="refreshButton" class="rounded-full bg-ink px-4 py-2 text-sm font-medium text-shell transition hover:bg-[#111818]" type="button">
+                                刷新数据
+                            </button>
+                            <span class="text-xs text-mist">保持页面与本地服务同步</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <article class="section-card metric-card rounded-[26px] p-5">
+                <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Total Skills</p>
+                <div class="mt-5 flex items-end justify-between gap-4">
+                    <div>
+                        <p class="font-display text-4xl leading-none text-ink" id="statTotalSkills">-</p>
+                        <p class="mt-2 text-sm text-mist">当前索引中的技能总数</p>
+                    </div>
+                    <span class="pill bg-teal/10 text-tealDeep">目录</span>
+                </div>
+            </article>
+            <article class="section-card metric-card rounded-[26px] p-5">
+                <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Enabled</p>
+                <div class="mt-5 flex items-end justify-between gap-4">
+                    <div>
+                        <p class="font-display text-4xl leading-none text-ink" id="statEnabledSkills">-</p>
+                        <p class="mt-2 text-sm text-mist">当前可用的技能数量</p>
+                    </div>
+                    <span class="pill bg-emerald-100 text-emerald-700">在线</span>
+                </div>
+            </article>
+            <article class="section-card metric-card rounded-[26px] p-5">
+                <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Sources</p>
+                <div class="mt-5 flex items-end justify-between gap-4">
+                    <div>
+                        <p class="font-display text-4xl leading-none text-ink" id="statSources">-</p>
+                        <p class="mt-2 text-sm text-mist">已接入的来源目录</p>
+                    </div>
+                    <span class="pill bg-amber-100 text-amber-700">订阅</span>
+                </div>
+            </article>
+            <article class="section-card metric-card rounded-[26px] p-5">
+                <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Call Volume</p>
+                <div class="mt-5 flex items-end justify-between gap-4">
+                    <div>
+                        <p class="font-display text-4xl leading-none text-ink" id="statTodayCalls">-</p>
+                        <p class="mt-2 text-sm text-mist">当前日期的调用记录数</p>
+                    </div>
+                    <span class="pill bg-coral/12 text-[#a14a28]">日志</span>
+                </div>
+            </article>
+        </section>
+
+        <section class="mt-6 grid gap-4 dashboard-grid lg:grid-cols-[1.45fr_0.85fr]">
+            <article class="section-card rounded-[30px] p-6 md:p-7">
+                <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Overview</p>
+                        <h2 class="mt-2 font-display text-2xl text-ink md:text-3xl">运行概览</h2>
+                        <p class="mt-3 max-w-2xl text-sm leading-7 text-mist">
+                            这里不是简单的数字堆叠，而是当前服务健康度、内容密度和最近活跃度的快速窗口。
+                        </p>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-[20px] border border-line bg-white/70 px-4 py-3">
+                            <p class="text-xs uppercase tracking-[0.2em] text-mist">活跃率</p>
+                            <p class="mt-2 text-xl font-semibold text-ink" id="overviewEnabledRate">-</p>
+                        </div>
+                        <div class="rounded-[20px] border border-line bg-white/70 px-4 py-3">
+                            <p class="text-xs uppercase tracking-[0.2em] text-mist">最新日志日</p>
+                            <p class="mt-2 text-xl font-semibold text-ink" id="overviewLatestLogDate">-</p>
+                        </div>
+                        <div class="rounded-[20px] border border-line bg-white/70 px-4 py-3">
+                            <p class="text-xs uppercase tracking-[0.2em] text-mist">技能密度</p>
+                            <p class="mt-2 text-xl font-semibold text-ink" id="overviewSkillsPerSource">-</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="section-card rounded-[30px] p-6 md:p-7">
+                <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Snapshot</p>
+                <h2 class="mt-2 font-display text-2xl text-ink">系统摘要</h2>
+                <div class="mt-5 space-y-4 text-sm leading-7 text-mist" id="summaryList">
+                    <div class="rounded-[20px] border border-line bg-white/70 p-4">正在读取本地数据摘要。</div>
+                </div>
+            </article>
+        </section>
+
+        <section class="mt-6 section-card rounded-[32px] p-4 md:p-5">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Workspace</p>
+                    <h2 class="mt-2 font-display text-2xl text-ink md:text-3xl">工作区</h2>
+                </div>
+                <div class="grid gap-2 sm:grid-cols-2 lg:flex" id="tabs">
+                    <button class="tab-button active rounded-full px-4 py-2.5 text-sm font-medium" data-tab="logs" type="button">调用日志</button>
+                    <button class="tab-button rounded-full px-4 py-2.5 text-sm font-medium" data-tab="skills" type="button">技能目录</button>
+                    <button class="tab-button rounded-full px-4 py-2.5 text-sm font-medium" data-tab="sources" type="button">来源订阅</button>
+                    <button class="tab-button rounded-full px-4 py-2.5 text-sm font-medium" data-tab="test" type="button">匹配测试</button>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <section class="tab-panel fade-enter" id="panel-logs">
+                    <div class="grid gap-4 xl:grid-cols-[280px_1fr]">
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Filters</p>
+                            <h3 class="mt-2 text-lg font-semibold text-ink">日志视图</h3>
+                            <div class="mt-5 space-y-4">
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="logDateSelect">日期</label>
+                                    <select class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="logDateSelect"></select>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="flex-1 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-shell transition hover:bg-[#141b1b]" id="reloadLogsButton" type="button">刷新日志</button>
+                                    <button class="rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-sand/50" id="jumpLatestButton" type="button">最新</button>
+                                </div>
+                                <div class="rounded-[20px] border border-line bg-paper px-4 py-4">
+                                    <p class="text-xs uppercase tracking-[0.18em] text-mist">Records</p>
+                                    <p class="mt-2 text-3xl font-display text-ink" id="logCount">0</p>
+                                    <p class="mt-2 text-sm text-mist" id="logPageInfo">第 1 / 1 页</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <div class="flex items-center justify-between gap-3 border-b border-line/80 pb-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-ink">调用时间线</p>
+                                    <p class="text-sm text-mist">按时间倒序查看匹配调用、命中技能和延迟。</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-sand/50" id="prevLogsBtn" type="button">上一页</button>
+                                    <button class="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-sand/50" id="nextLogsBtn" type="button">下一页</button>
+                                </div>
+                            </div>
+                            <div class="mt-4 max-h-[720px] space-y-4 overflow-y-auto pr-1 scroll-shell" id="logsContainer">
+                                <div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">正在加载日志</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel hidden fade-enter" id="panel-skills">
+                    <div class="grid gap-4 xl:grid-cols-[300px_1fr]">
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Controls</p>
+                            <h3 class="mt-2 text-lg font-semibold text-ink">技能筛选</h3>
+                            <div class="mt-5 space-y-4">
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="skillAgentFilter">Agent</label>
+                                    <select class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="skillAgentFilter">
+                                        <option value="">全部 Agent</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="skillSourceFilter">来源</label>
+                                    <select class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="skillSourceFilter">
+                                        <option value="">全部来源</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="skillKeywordFilter">关键字</label>
+                                    <input class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="skillKeywordFilter" placeholder="按技能名、描述、来源筛选" type="text">
+                                </div>
+                                <label class="flex items-center gap-3 rounded-[18px] border border-line bg-paper px-4 py-3 text-sm text-ink">
+                                    <input class="h-4 w-4 rounded border-line text-teal focus:ring-teal/20" id="skillEnabledOnly" type="checkbox" checked>
+                                    仅显示已启用技能
+                                </label>
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    <button class="rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-shell transition hover:bg-[#141b1b]" id="reindexButton" type="button">重建索引</button>
+                                    <button class="rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-sand/50" id="reloadSkillsButton" type="button">刷新列表</button>
+                                </div>
+                                <div class="rounded-[20px] border border-line bg-paper px-4 py-4">
+                                    <p class="text-xs uppercase tracking-[0.18em] text-mist">Catalog</p>
+                                    <p class="mt-2 text-3xl font-display text-ink" id="skillTotalCount">0</p>
+                                    <p class="mt-2 text-sm text-mist" id="skillPageInfo">第 1 / 1 页</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <div class="flex items-center justify-between gap-3 border-b border-line/80 pb-4">
+                                <div>
+                                    <p class="text-sm font-semibold text-ink">技能目录</p>
+                                    <p class="text-sm text-mist">统一查看描述、兼容 Agent、启用状态和来源。</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-sand/50" id="prevSkillsBtn" type="button">上一页</button>
+                                    <button class="rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-sand/50" id="nextSkillsBtn" type="button">下一页</button>
+                                </div>
+                            </div>
+                            <div class="mt-4 overflow-x-auto scroll-shell">
+                                <table class="data-table min-w-[860px]">
+                                    <thead>
+                                        <tr>
+                                            <th>技能</th>
+                                            <th>说明</th>
+                                            <th>兼容 Agent</th>
+                                            <th>状态</th>
+                                            <th>来源</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="skillsContainer">
+                                        <tr>
+                                            <td colspan="5" class="py-10 text-center text-sm text-mist">正在加载技能列表</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel hidden fade-enter" id="panel-sources">
+                    <div class="grid gap-4 xl:grid-cols-[340px_1fr]">
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Subscribe</p>
+                            <h3 class="mt-2 text-lg font-semibold text-ink">新增来源</h3>
+                            <div class="mt-5 space-y-4">
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="subscribePath">目录路径</label>
+                                    <input class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="subscribePath" placeholder="D:/shared-skills" type="text">
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="subscribeName">来源名称</label>
+                                    <input class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="subscribeName" placeholder="shared" type="text">
+                                </div>
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    <button class="rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-shell transition hover:bg-[#141b1b]" id="subscribeButton" type="button">添加订阅</button>
+                                    <button class="rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-sand/50" id="reloadSourcesButton" type="button">刷新来源</button>
+                                </div>
+                                <div class="rounded-[20px] border border-line bg-paper px-4 py-4">
+                                    <p class="text-xs uppercase tracking-[0.18em] text-mist">Source Notes</p>
+                                    <p class="mt-2 text-sm leading-7 text-mist">
+                                        local 为默认来源，不可取消。其他来源支持动态订阅和移除，适合把共享技能目录纳入统一索引。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <div class="border-b border-line/80 pb-4">
+                                <p class="text-sm font-semibold text-ink">来源列表</p>
+                                <p class="text-sm text-mist">查看当前来源根目录、状态，并按需取消订阅。</p>
+                            </div>
+                            <div class="mt-4 space-y-4" id="sourcesContainer">
+                                <div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">正在加载来源列表</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="tab-panel hidden fade-enter" id="panel-test">
+                    <div class="grid gap-4 xl:grid-cols-[380px_1fr]">
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <p class="font-mono text-[11px] uppercase tracking-[0.24em] text-mist">Match Test</p>
+                            <h3 class="mt-2 text-lg font-semibold text-ink">技能匹配实验台</h3>
+                            <div class="mt-5 space-y-4">
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="testQuery">查询内容</label>
+                                    <textarea class="min-h-[120px] w-full rounded-[22px] border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="testQuery" placeholder="例如：生成 Android UI 测试，或者查找前端设计技能"></textarea>
+                                </div>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label class="mb-2 block text-sm font-medium text-ink" for="testAgentType">Agent</label>
+                                        <select class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="testAgentType">
+                                            <option value="">全部</option>
+                                            <option value="claude_code">Claude Code</option>
+                                            <option value="codex">Codex</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="mb-2 block text-sm font-medium text-ink" for="testTopK">返回数量</label>
+                                        <select class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="testTopK">
+                                            <option value="3">3</option>
+                                            <option value="5" selected>5</option>
+                                            <option value="10">10</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-ink" for="testSessionId">测试 Session ID</label>
+                                    <input class="w-full rounded-2xl border border-line bg-shell px-4 py-3 text-sm outline-none transition focus:border-teal focus:ring-2 focus:ring-teal/15" id="testSessionId" placeholder="test-dashboard" type="text" value="test-dashboard">
+                                </div>
+                                <button class="w-full rounded-full bg-gradient-to-r from-teal to-tealDeep px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95" id="runMatchButton" type="button">
+                                    执行匹配测试
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[24px] border border-line bg-white/80 p-5">
+                            <div class="border-b border-line/80 pb-4">
+                                <p class="text-sm font-semibold text-ink">测试结果</p>
+                                <p class="text-sm text-mist">结果会按匹配分数排序，便于快速判断技能质量和召回情况。</p>
+                            </div>
+                            <div class="mt-4 space-y-3" id="testResultsContainer">
+                                <div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">输入查询后执行测试</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </div>
+
+    <div class="pointer-events-none fixed bottom-5 right-5 z-50 translate-y-6 opacity-0 transition-all duration-300" id="toast">
+        <div class="rounded-full px-5 py-3 text-sm font-medium text-white shadow-soft" id="toastInner">提示</div>
+    </div>
+
+    <script>
+        function getApiBase() {
+            if (window.location.protocol === "file:") {
+                return "http://127.0.0.1:8765";
+            }
+            return window.location.origin;
+        }
+
+        const API_BASE = getApiBase();
+        const PAGE_SIZE = 20;
+
+        const state = {
+            currentTab: "logs",
+            logOffset: 0,
+            logTotal: 0,
+            skillOffset: 0,
+            skillTotal: 0,
+            skillCatalog: [],
+            stats: null,
+            logDates: [],
+            latestLogDate: "",
+            sources: []
+        };
+
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement("div");
+            div.textContent = value == null ? "" : String(value);
+            return div.innerHTML;
+        }
+
+        function ensureArray(value) {
+            if (Array.isArray(value)) {
+                return value;
+            }
+            if (typeof value === "string") {
+                return value.split(",").map((item) => item.trim()).filter(Boolean);
+            }
+            return [];
+        }
+
+        function updateClock() {
+            $("currentTime").textContent = new Date().toLocaleString("zh-CN", {
+                hour12: false
+            });
+        }
+
+        function showToast(message, type = "info") {
+            const toast = $("toast");
+            const inner = $("toastInner");
+            const colorMap = {
+                success: "bg-emerald-600",
+                error: "bg-red-600",
+                warning: "bg-amber-600",
+                info: "bg-ink"
+            };
+
+            inner.className = `rounded-full px-5 py-3 text-sm font-medium text-white shadow-soft ${colorMap[type] || colorMap.info}`;
+            inner.textContent = message;
+            toast.classList.remove("pointer-events-none", "translate-y-6", "opacity-0");
+
+            window.clearTimeout(showToast.timer);
+            showToast.timer = window.setTimeout(() => {
+                toast.classList.add("pointer-events-none", "translate-y-6", "opacity-0");
+            }, 2600);
+        }
+
+        function setServiceStatus(online, detail = "") {
+            $("serviceDot").style.backgroundColor = online ? "var(--success)" : "var(--danger)";
+            $("serviceStatus").textContent = online ? "服务运行中" : "服务不可用";
+            $("serviceMeta").textContent = detail || (online ? "健康检查通过" : "无法连接本地 API");
+        }
+
+        function metricValue(value, fallback = "-") {
+            return value === undefined || value === null || value === "" ? fallback : value;
+        }
+
+        function getStatsValue(stats, ...keys) {
+            for (const key of keys) {
+                if (stats && stats[key] !== undefined && stats[key] !== null) {
+                    return stats[key];
+                }
+            }
+            return 0;
+        }
+
+        function renderSummary() {
+            const totalSkills = Number($("statTotalSkills").textContent) || 0;
+            const enabledSkills = Number($("statEnabledSkills").textContent) || 0;
+            const sourceCount = Number($("statSources").textContent) || 0;
+            const callCount = Number($("statTodayCalls").textContent) || 0;
+            const enabledRate = totalSkills > 0 ? `${Math.round((enabledSkills / totalSkills) * 100)}%` : "0%";
+            const skillsPerSource = sourceCount > 0 ? (totalSkills / sourceCount).toFixed(1) : `${totalSkills}`;
+
+            $("overviewEnabledRate").textContent = enabledRate;
+            $("overviewLatestLogDate").textContent = state.latestLogDate || "暂无";
+            $("overviewSkillsPerSource").textContent = skillsPerSource;
+
+            const items = [
+                `当前索引共 ${totalSkills} 个技能，其中 ${enabledSkills} 个处于启用状态。`,
+                sourceCount > 0 ? `系统已接入 ${sourceCount} 个来源目录，平均每个来源约 ${skillsPerSource} 个技能。` : "当前只有默认来源，尚未接入额外共享目录。",
+                callCount > 0 ? `当前日志日期共记录 ${callCount} 次调用，可直接在时间线中排查命中结果。` : "当前日志日期没有调用记录，适合先通过匹配测试验证召回效果。"
+            ];
+
+            $("summaryList").innerHTML = items.map((item, index) => `
+                <div class="rounded-[20px] border border-line bg-white/72 px-4 py-4 text-sm leading-7 text-mist fade-enter">
+                    <span class="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-sand font-mono text-[11px] text-ink">${index + 1}</span>
+                    ${escapeHtml(item)}
+                </div>
+            `).join("");
+        }
+
+        async function fetchJson(url, options) {
+            const response = await fetch(url, options);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const detail = data && (data.detail || data.message);
+                throw new Error(detail || `Request failed: ${response.status}`);
+            }
+            return data;
+        }
+
+        async function checkHealth() {
+            try {
+                await fetchJson(`${API_BASE}/health`);
+                setServiceStatus(true, "本地服务连接正常");
+
+                try {
+                    const runtime = await fetchJson(`${API_BASE}/api/admin/status`);
+                    const host = runtime.host || "127.0.0.1";
+                    const port = runtime.port || "8765";
+                    const readyAt = runtime.ready_at || runtime.started_at || "未知时间";
+                    setServiceStatus(true, `${host}:${port} · Ready at ${readyAt}`);
+                } catch (error) {
+                    setServiceStatus(true, "健康检查通过");
+                }
+            } catch (error) {
+                setServiceStatus(false, error.message);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const [stats, logs, sources, enabledSkillsResult] = await Promise.all([
+                    fetchJson(`${API_BASE}/api/skill/stats`),
+                    fetchJson(`${API_BASE}/api/logs/calls?limit=1`),
+                    fetchJson(`${API_BASE}/api/source/list`),
+                    fetchJson(`${API_BASE}/api/skill/list?enabled_only=true&offset=0&limit=1`)
+                ]);
+
+                state.stats = stats;
+                state.sources = sources.sources || [];
+
+                const totalSkills = getStatsValue(stats, "total_skills", "total");
+                const enabledSkills = enabledSkillsResult.total || getStatsValue(stats, "enabled_skills", "enabled");
+                const sourceCount = getStatsValue(stats, "sources", "source_count") || state.sources.length;
+                const todayCalls = logs.total || 0;
+
+                $("statTotalSkills").textContent = metricValue(totalSkills);
+                $("statEnabledSkills").textContent = metricValue(enabledSkills);
+                $("statSources").textContent = metricValue(sourceCount);
+                $("statTodayCalls").textContent = metricValue(todayCalls);
+                renderSummary();
+            } catch (error) {
+                console.error(error);
+                showToast(`加载统计失败：${error.message}`, "error");
+            }
+        }
+
+        async function loadLogDates() {
+            try {
+                const data = await fetchJson(`${API_BASE}/api/logs/dates`);
+                state.logDates = data.dates || [];
+                state.latestLogDate = state.logDates[0] || "";
+
+                const select = $("logDateSelect");
+                if (state.logDates.length === 0) {
+                    select.innerHTML = '<option value="">暂无日志日期</option>';
+                } else {
+                    select.innerHTML = state.logDates.map((date) => `<option value="${date}">${date}</option>`).join("");
+                    if (!select.value) {
+                        select.value = state.latestLogDate;
+                    }
+                }
+                renderSummary();
+            } catch (error) {
+                console.error(error);
+                showToast(`加载日志日期失败：${error.message}`, "error");
+            }
+        }
+
+        function formatLogHits(hits) {
+            if (!Array.isArray(hits) || hits.length === 0) {
+                return '<div class="text-sm text-mist">无命中技能</div>';
+            }
+
+            return `
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${hits.slice(0, 6).map((hit, index) => {
+                        const score = typeof hit.score === "number" ? hit.score : 0;
+                        let colorClass = "bg-slate-100 text-slate-600";
+                        if (score >= 0.8) colorClass = "bg-emerald-100 text-emerald-700";
+                        else if (score >= 0.65) colorClass = "bg-amber-100 text-amber-700";
+                        return `<span class="pill ${colorClass}">${index + 1}. ${escapeHtml(hit.name || "unknown")} ${score ? score.toFixed(2) : ""}</span>`;
+                    }).join("")}
+                </div>
+            `;
+        }
+
+        function isTestSession(sessionId) {
+            if (!sessionId) {
+                return false;
+            }
+            const normalized = String(sessionId).trim().toLowerCase();
+            return normalized.startsWith("test") || normalized.includes("dashboard-test");
+        }
+
+        async function loadLogs() {
+            const date = $("logDateSelect").value;
+            if (!date) {
+                $("logsContainer").innerHTML = '<div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">暂无日志可显示</div>';
+                $("logCount").textContent = "0";
+                $("logPageInfo").textContent = "第 1 / 1 页";
+                return;
+            }
+
+            try {
+                const data = await fetchJson(`${API_BASE}/api/logs/calls?date=${encodeURIComponent(date)}&offset=${state.logOffset}&limit=${PAGE_SIZE}`);
+                state.logTotal = data.total || 0;
+
+                const currentPage = Math.floor(state.logOffset / PAGE_SIZE) + 1;
+                const totalPages = Math.max(1, Math.ceil(state.logTotal / PAGE_SIZE));
+                $("logCount").textContent = String(state.logTotal);
+                $("logPageInfo").textContent = `第 ${currentPage} / ${totalPages} 页`;
+                $("prevLogsBtn").disabled = state.logOffset === 0;
+                $("nextLogsBtn").disabled = state.logOffset + PAGE_SIZE >= state.logTotal;
+
+                if (!data.logs || data.logs.length === 0) {
+                    $("logsContainer").innerHTML = '<div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">这个日期没有调用记录</div>';
+                    return;
+                }
+
+                $("logsContainer").innerHTML = data.logs.map((log) => {
+                    const hits = Array.isArray(log.hits) ? log.hits : [];
+                    const latency = log.latency_ms != null ? `${Math.round(log.latency_ms)} ms` : "未知延迟";
+                    const source = log.source || "unknown";
+                    const sessionId = log.session_id || "";
+                    const sourceLabel = isTestSession(sessionId) && source === "unknown" ? "测试" : source;
+                    return `
+                        <article class="rounded-[24px] border border-line bg-white/78 p-5 fade-enter">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div class="space-y-3">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="pill bg-ink text-shell">${escapeHtml(sourceLabel)}</span>
+                                        <span class="pill bg-sand text-ink">${escapeHtml(log.timestamp || "未知时间")}</span>
+                                        <span class="pill bg-coral/12 text-[#a14a28]">${hits.length} 个命中</span>
+                                    </div>
+                                    <p class="text-base leading-7 text-ink">${escapeHtml(log.query || "空查询")}</p>
+                                </div>
+                                <div class="rounded-full bg-paper px-4 py-2 text-sm font-medium text-mist">${escapeHtml(latency)}</div>
+                            </div>
+                            ${formatLogHits(hits)}
+                        </article>
+                    `;
+                }).join("");
+            } catch (error) {
+                console.error(error);
+                $("logsContainer").innerHTML = `<div class="rounded-[22px] border border-dashed border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">加载日志失败：${escapeHtml(error.message)}</div>`;
+                showToast(`加载日志失败：${error.message}`, "error");
+            }
+        }
+
+        function normalizeCompatibility(skill) {
+            const compatibility = ensureArray(skill.compatibility);
+            return compatibility.length > 0 ? compatibility : ["未标注"];
+        }
+
+        function populateAgentFilter(skills) {
+            const select = $("skillAgentFilter");
+            const previousValue = select.value;
+            const agentSet = new Set([""]);
+
+            skills.forEach((skill) => {
+                normalizeCompatibility(skill).forEach((agent) => {
+                    if (agent && agent !== "未标注") {
+                        agentSet.add(agent);
+                    }
+                });
+            });
+
+            const options = ['<option value="">全部 Agent</option>'].concat(
+                Array.from(agentSet)
+                    .filter(Boolean)
+                    .sort()
+                    .map((agent) => `<option value="${agent}">${agent}</option>`)
+            );
+            select.innerHTML = options.join("");
+            if (previousValue && agentSet.has(previousValue)) {
+                select.value = previousValue;
+            }
+        }
+
+        function populateSourceFilter(skills) {
+            const select = $("skillSourceFilter");
+            const previousValue = select.value;
+            const sourceSet = new Set([""]);
+
+            skills.forEach((skill) => {
+                const sourceName = String(skill.source_name || skill.source_root || "local").trim();
+                if (sourceName) {
+                    sourceSet.add(sourceName);
+                }
+            });
+
+            const options = ['<option value="">全部来源</option>'].concat(
+                Array.from(sourceSet)
+                    .filter(Boolean)
+                    .sort((a, b) => a.localeCompare(b, "zh-CN"))
+                    .map((source) => `<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`)
+            );
+            select.innerHTML = options.join("");
+            if (previousValue && sourceSet.has(previousValue)) {
+                select.value = previousValue;
+            }
+        }
+
+        function filterSkills(skills) {
+            const sourceFilter = $("skillSourceFilter").value.trim().toLowerCase();
+            const keyword = $("skillKeywordFilter").value.trim().toLowerCase();
+
+            return skills.filter((skill) => {
+                const sourceName = String(skill.source_name || skill.source_root || "local");
+                if (sourceFilter && sourceName.toLowerCase() !== sourceFilter) {
+                    return false;
+                }
+
+                if (!keyword) {
+                    return true;
+                }
+
+                const haystack = [
+                    skill.name || "",
+                    skill.description || "",
+                    sourceName,
+                    ...normalizeCompatibility(skill)
+                ].join(" ").toLowerCase();
+
+                return haystack.includes(keyword);
+            });
+        }
+
+        async function loadSkills() {
+            const agentType = $("skillAgentFilter").value;
+            const enabledOnly = $("skillEnabledOnly").checked;
+
+            try {
+                const data = await fetchJson(`${API_BASE}/api/skill/list?agent_type=${encodeURIComponent(agentType)}&enabled_only=${enabledOnly}&offset=0&limit=200`);
+                state.skillCatalog = data.skills || [];
+                populateAgentFilter(state.skillCatalog);
+                populateSourceFilter(state.skillCatalog);
+
+                const filteredSkills = filterSkills(state.skillCatalog);
+                state.skillTotal = filteredSkills.length;
+                $("skillTotalCount").textContent = String(state.skillTotal);
+
+                const currentPage = Math.floor(state.skillOffset / PAGE_SIZE) + 1;
+                const totalPages = Math.max(1, Math.ceil(state.skillTotal / PAGE_SIZE));
+                $("skillPageInfo").textContent = `第 ${currentPage} / ${totalPages} 页`;
+                $("prevSkillsBtn").disabled = state.skillOffset === 0;
+                $("nextSkillsBtn").disabled = state.skillOffset + PAGE_SIZE >= state.skillTotal;
+
+                if (filteredSkills.length === 0) {
+                    $("skillsContainer").innerHTML = '<tr><td colspan="5" class="py-10 text-center text-sm text-mist">没有符合条件的技能</td></tr>';
+                    return;
+                }
+
+                const visibleSkills = filteredSkills.slice(state.skillOffset, state.skillOffset + PAGE_SIZE);
+
+                $("skillsContainer").innerHTML = visibleSkills.map((skill) => {
+                    const compatibility = normalizeCompatibility(skill);
+                    const enabled = !!skill.enabled;
+                    return `
+                        <tr class="fade-enter">
+                            <td>
+                                <div class="space-y-1">
+                                    <div class="text-sm font-semibold text-ink">${escapeHtml(skill.name || "-")}</div>
+                                    <div class="font-mono text-[12px] text-mist">${escapeHtml(skill.version || "1.0.0")}</div>
+                                </div>
+                            </td>
+                            <td class="max-w-[320px] text-sm leading-7 text-mist">${escapeHtml(skill.description || "无描述")}</td>
+                            <td>
+                                <div class="flex flex-wrap gap-2">
+                                    ${compatibility.map((agent) => `<span class="pill bg-paper text-ink">${escapeHtml(agent)}</span>`).join("")}
+                                </div>
+                            </td>
+                            <td class="w-[116px]">
+                                <span class="pill whitespace-nowrap ${enabled ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200" : "bg-slate-100 text-slate-500 ring-1 ring-slate-200"}">
+                                    ${enabled ? "已启用" : "已禁用"}
+                                </span>
+                            </td>
+                            <td class="text-sm text-mist">${escapeHtml(skill.source_name || skill.source_root || "local")}</td>
+                        </tr>
+                    `;
+                }).join("");
+            } catch (error) {
+                console.error(error);
+                $("skillsContainer").innerHTML = `<tr><td colspan="5" class="py-10 text-center text-sm text-red-600">加载技能失败：${escapeHtml(error.message)}</td></tr>`;
+                showToast(`加载技能失败：${error.message}`, "error");
+            }
+        }
+
+        async function reindexSkills() {
+            try {
+                showToast("正在重建索引", "info");
+                const data = await fetchJson(`${API_BASE}/api/skill/reindex`, {
+                    method: "POST"
+                });
+                showToast(`索引重建完成，共 ${data.indexed || 0} 个技能`, "success");
+                await Promise.all([loadStats(), loadSkills()]);
+            } catch (error) {
+                console.error(error);
+                showToast(`重建索引失败：${error.message}`, "error");
+            }
+        }
+
+        async function loadSources() {
+            try {
+                const data = await fetchJson(`${API_BASE}/api/source/list`);
+                state.sources = data.sources || [];
+                renderSummary();
+
+                if (state.sources.length === 0) {
+                    $("sourcesContainer").innerHTML = '<div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">当前没有来源数据</div>';
+                    return;
+                }
+
+                $("sourcesContainer").innerHTML = state.sources.map((source) => {
+                    const isLocal = source.name === "local";
+                    const status = source.enabled === false ? "已禁用" : "已接入";
+                    return `
+                        <article class="rounded-[24px] border border-line bg-white/78 p-5 fade-enter">
+                            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h4 class="text-base font-semibold text-ink">${escapeHtml(source.name || "unknown")}</h4>
+                                        <span class="pill ${isLocal ? "bg-paper text-ink" : "bg-amber-100 text-amber-700"}">${isLocal ? "默认来源" : status}</span>
+                                    </div>
+                                    <p class="mt-3 font-mono text-xs leading-6 text-mist">${escapeHtml(source.root || "-")}</p>
+                                </div>
+                                ${isLocal ? `
+                                    <span class="rounded-full border border-line px-4 py-2 text-sm text-mist">不可移除</span>
+                                ` : `
+                                    <button class="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50" type="button" onclick="unsubscribeSource('${escapeHtml(source.name || "")}')">
+                                        取消订阅
+                                    </button>
+                                `}
+                            </div>
+                        </article>
+                    `;
+                }).join("");
+            } catch (error) {
+                console.error(error);
+                $("sourcesContainer").innerHTML = `<div class="rounded-[22px] border border-dashed border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">加载来源失败：${escapeHtml(error.message)}</div>`;
+                showToast(`加载来源失败：${error.message}`, "error");
+            }
+        }
+
+        async function subscribeSource() {
+            const path = $("subscribePath").value.trim();
+            const name = $("subscribeName").value.trim();
+
+            if (!path) {
+                showToast("请输入来源目录路径", "warning");
+                return;
+            }
+
+            try {
+                await fetchJson(`${API_BASE}/api/source/subscribe`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        path,
+                        name: name || undefined
+                    })
+                });
+                $("subscribePath").value = "";
+                $("subscribeName").value = "";
+                showToast("订阅成功", "success");
+                await Promise.all([loadSources(), loadStats(), loadSkills()]);
+            } catch (error) {
+                console.error(error);
+                showToast(`订阅失败：${error.message}`, "error");
+            }
+        }
+
+        async function unsubscribeSource(name) {
+            if (!window.confirm(`确定要取消订阅 "${name}" 吗？`)) {
+                return;
+            }
+
+            try {
+                await fetchJson(`${API_BASE}/api/source/unsubscribe`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name_or_root: name
+                    })
+                });
+                showToast("已取消订阅", "success");
+                await Promise.all([loadSources(), loadStats(), loadSkills()]);
+            } catch (error) {
+                console.error(error);
+                showToast(`取消订阅失败：${error.message}`, "error");
+            }
+        }
+
+        async function runMatchTest() {
+            const query = $("testQuery").value.trim();
+            const agentType = $("testAgentType").value;
+            const topK = Number($("testTopK").value) || 5;
+            const sessionId = $("testSessionId").value.trim() || "test-dashboard";
+
+            if (!query) {
+                showToast("请输入测试查询", "warning");
+                return;
+            }
+
+            try {
+                const results = await fetchJson(`${API_BASE}/api/skill/match`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        query,
+                        agent_type: agentType || null,
+                        session_id: sessionId,
+                        top_k: topK
+                    })
+                });
+
+                if (!Array.isArray(results) || results.length === 0) {
+                    $("testResultsContainer").innerHTML = '<div class="rounded-[22px] border border-dashed border-line bg-white/70 p-8 text-center text-sm text-mist">没有命中技能</div>';
+                    return;
+                }
+
+                $("testResultsContainer").innerHTML = results.map((skill, index) => {
+                    const score = typeof skill.score === "number" ? skill.score : 0;
+                    const vectorScore = typeof skill.vector_score === "number" ? skill.vector_score : null;
+                    const lexicalScore = typeof skill.lexical_score === "number" ? skill.lexical_score : null;
+                    const compatibility = normalizeCompatibility(skill);
+                    return `
+                        <article class="rounded-[24px] border border-line bg-white/78 p-5 fade-enter">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="pill bg-ink text-shell">#${index + 1}</span>
+                                        <h4 class="text-base font-semibold text-ink">${escapeHtml(skill.name || "unknown")}</h4>
+                                    </div>
+                                    <p class="mt-3 text-sm leading-7 text-mist">${escapeHtml(skill.description || "无描述")}</p>
+                                    <div class="mt-3 flex flex-wrap gap-2">
+                                        ${compatibility.map((agent) => `<span class="pill bg-paper text-ink">${escapeHtml(agent)}</span>`).join("")}
+                                    </div>
+                                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                                        <div class="rounded-2xl border border-line bg-paper/70 px-3 py-2">
+                                            <p class="text-[11px] uppercase tracking-[0.18em] text-mist">Final</p>
+                                            <p class="mt-1 text-sm font-semibold text-ink">${(score * 100).toFixed(1)}%</p>
+                                        </div>
+                                        <div class="rounded-2xl border border-line bg-paper/70 px-3 py-2">
+                                            <p class="text-[11px] uppercase tracking-[0.18em] text-mist">Vector</p>
+                                            <p class="mt-1 text-sm font-semibold text-ink">${vectorScore === null ? "n/a" : `${(vectorScore * 100).toFixed(1)}%`}</p>
+                                        </div>
+                                        <div class="rounded-2xl border border-line bg-paper/70 px-3 py-2">
+                                            <p class="text-[11px] uppercase tracking-[0.18em] text-mist">Lexical</p>
+                                            <p class="mt-1 text-sm font-semibold text-ink">${lexicalScore === null ? "n/a" : `${(lexicalScore * 100).toFixed(1)}%`}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="rounded-[18px] bg-paper px-4 py-3 text-right">
+                                    <p class="text-xs uppercase tracking-[0.18em] text-mist">Hybrid</p>
+                                    <p class="mt-2 text-2xl font-display text-ink">${(score * 100).toFixed(1)}%</p>
+                                </div>
+                            </div>
+                        </article>
+                    `;
+                }).join("");
+
+                await Promise.all([loadStats(), loadLogDates()]);
+                if (state.currentTab === "logs") {
+                    state.logOffset = 0;
+                    await loadLogs();
+                }
+            } catch (error) {
+                console.error(error);
+                $("testResultsContainer").innerHTML = `<div class="rounded-[22px] border border-dashed border-red-200 bg-red-50 p-8 text-center text-sm text-red-600">匹配失败：${escapeHtml(error.message)}</div>`;
+                showToast(`匹配失败：${error.message}`, "error");
+            }
+        }
+
+        function switchTab(tab) {
+            state.currentTab = tab;
+            document.querySelectorAll(".tab-button").forEach((button) => {
+                button.classList.toggle("active", button.dataset.tab === tab);
+            });
+            document.querySelectorAll(".tab-panel").forEach((panel) => {
+                panel.classList.toggle("hidden", panel.id !== `panel-${tab}`);
+            });
+
+            if (tab === "logs") {
+                loadLogs();
+            } else if (tab === "skills") {
+                loadSkills();
+            } else if (tab === "sources") {
+                loadSources();
+            }
+        }
+
+        async function refreshAll(options = {}) {
+            const { reindex = false } = options;
+            if (reindex) {
+                showToast("正在同步技能索引", "info");
+                await fetchJson(`${API_BASE}/api/skill/reindex`, {
+                    method: "POST"
+                });
+            }
+            await Promise.all([checkHealth(), loadStats(), loadLogDates(), loadSources()]);
+            if (state.currentTab === "logs") {
+                await loadLogs();
+            }
+            if (state.currentTab === "skills") {
+                await loadSkills();
+            }
+            renderSummary();
+        }
+
+        function attachEvents() {
+            $("refreshButton").addEventListener("click", () => refreshAll({ reindex: true }));
+            $("reloadLogsButton").addEventListener("click", () => {
+                state.logOffset = 0;
+                loadLogs();
+            });
+            $("jumpLatestButton").addEventListener("click", () => {
+                if (state.latestLogDate) {
+                    $("logDateSelect").value = state.latestLogDate;
+                    state.logOffset = 0;
+                    loadLogs();
+                }
+            });
+            $("logDateSelect").addEventListener("change", () => {
+                state.logOffset = 0;
+                loadLogs();
+            });
+            $("prevLogsBtn").addEventListener("click", () => {
+                if (state.logOffset > 0) {
+                    state.logOffset = Math.max(0, state.logOffset - PAGE_SIZE);
+                    loadLogs();
+                }
+            });
+            $("nextLogsBtn").addEventListener("click", () => {
+                if (state.logOffset + PAGE_SIZE < state.logTotal) {
+                    state.logOffset += PAGE_SIZE;
+                    loadLogs();
+                }
+            });
+
+            $("skillAgentFilter").addEventListener("change", () => {
+                state.skillOffset = 0;
+                loadSkills();
+            });
+            $("skillSourceFilter").addEventListener("change", () => {
+                state.skillOffset = 0;
+                loadSkills();
+            });
+            $("skillKeywordFilter").addEventListener("input", () => {
+                state.skillOffset = 0;
+                loadSkills();
+            });
+            $("skillEnabledOnly").addEventListener("change", () => {
+                state.skillOffset = 0;
+                loadSkills();
+            });
+            $("reloadSkillsButton").addEventListener("click", () => {
+                state.skillOffset = 0;
+                refreshAll({ reindex: true });
+            });
+            $("reindexButton").addEventListener("click", reindexSkills);
+            $("prevSkillsBtn").addEventListener("click", () => {
+                if (state.skillOffset > 0) {
+                    state.skillOffset = Math.max(0, state.skillOffset - PAGE_SIZE);
+                    loadSkills();
+                }
+            });
+            $("nextSkillsBtn").addEventListener("click", () => {
+                if (state.skillOffset + PAGE_SIZE < state.skillTotal) {
+                    state.skillOffset += PAGE_SIZE;
+                    loadSkills();
+                }
+            });
+
+            $("subscribeButton").addEventListener("click", subscribeSource);
+            $("reloadSourcesButton").addEventListener("click", loadSources);
+            $("runMatchButton").addEventListener("click", runMatchTest);
+
+            document.querySelectorAll(".tab-button").forEach((button) => {
+                button.addEventListener("click", () => switchTab(button.dataset.tab));
+            });
+        }
+
+        window.unsubscribeSource = unsubscribeSource;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            attachEvents();
+            updateClock();
+            window.setInterval(updateClock, 1000);
+            await refreshAll();
+            await loadSkills();
+        });
+    </script>
+</body>
+</html>
