@@ -251,6 +251,8 @@ class SkillParser:
 
             description = str(km.get("description", "")).strip()
             summary = self._extract_search_summary(post.content or "")
+            if not description:
+                description = summary
             auto_aliases = self._extract_aliases(name, description)
             auto_keywords = self._extract_keywords(name, description, summary)
             manual_aliases = self._normalize_list(km.get("aliases"), [])

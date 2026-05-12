@@ -477,13 +477,10 @@ def match(
             f"vector={float(skill.get('vector_score') or 0):.4f}, "
             f"lexical={float(skill.get('lexical_score') or 0):.4f}"
         )
-        if skill.get("relative_path"):
-            typer.echo(f"  Relative Path: {skill.get('relative_path', '')}")
         if skill.get("file_path"):
             typer.echo(f"  File Path: {skill.get('file_path', '')}")
-        if skill.get("source_rel_path"):
-            typer.echo(f"  Source Path: {skill.get('source_rel_path', '')}")
-        typer.echo(f"  {skill['description']}")
+        description = (skill.get("description") or "").strip()
+        typer.echo(f"  Skill Description: {description}")
         typer.echo(f"  Tags: {', '.join(skill['tags'])}")
 
 
